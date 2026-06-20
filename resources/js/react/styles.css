@@ -374,6 +374,46 @@ select {
     margin-top: 3px;
 }
 
+.auth-success-card {
+    background: rgba(60, 153, 92, 0.1);
+    border: 1px solid rgba(60, 153, 92, 0.24);
+    border-radius: 6px;
+    color: #217344;
+    margin-bottom: 13px;
+    padding: 10px 12px;
+}
+
+.auth-success-card strong {
+    display: block;
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.auth-success-card p {
+    color: #2a7950;
+    font-size: 10px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.verify-email-card {
+    max-width: 430px;
+}
+
+.verify-resend-form {
+    margin-top: 12px;
+    text-align: center;
+}
+
+.verify-resend-form button {
+    background: transparent;
+    border: none;
+    color: #f2a43b;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 900;
+}
+
 .user-register-form .primary-button {
     background: #f4aa3f;
     border-radius: 6px;

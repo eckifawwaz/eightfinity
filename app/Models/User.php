@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable
 {
@@ -25,6 +26,8 @@ class User extends Authenticatable
         'alternate_phone',
         'password',
         'role',
+        'email_verification_code_hash',
+        'email_verification_expires_at',
     ];
 
     /**
@@ -35,6 +38,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'email_verification_code_hash',
     ];
 
     /**
@@ -44,8 +48,21 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'email_verification_expires_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function generateEmailVerificationCode(): string
+    {
+        $code = (string) random_int(100000, 999999);
+
+        $this->forceFill([
+            'email_verification_code_hash' => Hash::make($code),
+            'email_verification_expires_at' => now()->addMinutes(10),
+        ])->save();
+
+        return $code;
+    }
 
     public function bookings(): HasMany
     {

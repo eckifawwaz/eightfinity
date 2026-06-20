@@ -45,6 +45,16 @@
             window.__ADMIN_LAYOUT__ = @json($adminLayout);
         </script>
     @endisset
+    @isset($verificationEmail)
+        <script>
+            window.__VERIFY_EMAIL__ = @json($verificationEmail);
+        </script>
+    @endisset
+    @isset($verificationStatus)
+        <script>
+            window.__FLASH_STATUS__ = @json($verificationStatus);
+        </script>
+    @endisset
     @if ($errors->any())
         <script>
             window.__FORM_ERRORS__ = @json($errors->all());

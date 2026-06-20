@@ -24,6 +24,7 @@ import UserPaymentSuccess from './pages/user/UserPaymentSuccess';
 import UserProfile from './pages/user/UserProfile';
 import UserSignIn from './pages/user/UserSignIn';
 import UserSignUp from './pages/user/UserSignUp';
+import UserVerifyEmail from './pages/user/UserVerifyEmail';
 import './styles.css';
 
 function FloatingBackButton() {
@@ -53,6 +54,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/register" replace />} />
                 <Route path="/login" element={<UserSignIn />} />
                 <Route path="/register" element={<UserSignUp />} />
+                <Route path="/verify-email" element={<UserVerifyEmail />} />
                 <Route path="/home" element={<UserHome />} />
                 <Route path="/book" element={<UserBook />} />
                 <Route path="/packages/:slug" element={<UserPackageDetail />} />

@@ -119,14 +119,16 @@ Jalankan seeder untuk membuat akun admin:
 php artisan db:seed
 ```
 
-Credential admin default mengikuti `.env`:
+Credential admin mengikuti `.env`:
 
 ```env
 ADMIN_SEED_NAME="EightFinity Admin"
-ADMIN_SEED_EMAIL=admin@eightfinity.example.com
+ADMIN_SEED_EMAIL=admin@your-domain.com
 ADMIN_SEED_PASSWORD=change-this-admin-password
 ADMIN_SEED_PHONE=+6280000000000
 ```
+
+Seeder akan dilewati jika `ADMIN_SEED_EMAIL` belum diisi atau password masih memakai placeholder. Isi dengan email dan password admin yang benar sebelum menjalankan `php artisan db:seed`.
 
 ## Run Local
 
@@ -221,6 +223,8 @@ MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=no-reply@your-domain.com
 MAIL_FROM_NAME="${APP_NAME}"
 ```
+
+Jangan gunakan password placeholder di production. Isi `ADMIN_SEED_PASSWORD` dengan password admin yang kuat sebelum menjalankan `php artisan db:seed --force`.
 
 Pastikan folder berikut writable oleh web server:
 

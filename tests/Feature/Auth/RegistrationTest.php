@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Mail\EmailVerificationCodeMail;
+use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use App\Support\PortalUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -21,6 +24,8 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        Mail::fake();
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -36,11 +41,21 @@ class RegistrationTest extends TestCase
             'phone' => '+6281234567890',
             'role' => 'user',
         ]);
-        $response->assertRedirect(PortalUrl::to('user', RouteServiceProvider::HOME));
+
+        $user = User::where('email', 'test@example.com')->first();
+        $this->assertNull($user->email_verified_at);
+        $this->assertNotNull($user->email_verification_code_hash);
+        $this->assertNotNull($user->email_verification_expires_at);
+
+        Mail::assertSent(EmailVerificationCodeMail::class, fn ($mail) => $mail->hasTo('test@example.com'));
+        $response->assertRedirect(PortalUrl::to('user', '/verify-email'));
     }
 
-    public function test_registered_email_can_login_immediately(): void
+    public function test_registered_email_can_verify_and_login(): void
     {
+        Mail::fake();
+        $code = null;
+
         $this->post('/register', [
             'first_name' => 'Maya',
             'last_name' => 'Putri',
@@ -51,16 +66,28 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated('web');
+        Mail::assertSent(EmailVerificationCodeMail::class, function ($mail) use (&$code) {
+            $code = $mail->code;
+
+            return $mail->hasTo('maya@example.com');
+        });
+
+        $response = $this->post('/verify-email', [
+            'code' => $code,
+        ]);
+
+        $response->assertRedirect(PortalUrl::to('user', RouteServiceProvider::HOME));
+        $this->assertNotNull(User::where('email', 'maya@example.com')->first()->email_verified_at);
 
         Auth::guard('web')->logout();
         $this->assertGuest('web');
 
-        $response = $this->post('/login', [
+        $loginResponse = $this->post('/login', [
             'email' => 'maya@example.com',
             'password' => 'password',
         ]);
 
         $this->assertAuthenticated('web');
-        $response->assertRedirect(PortalUrl::to('user', RouteServiceProvider::HOME));
+        $loginResponse->assertRedirect(PortalUrl::to('user', RouteServiceProvider::HOME));
     }
 }

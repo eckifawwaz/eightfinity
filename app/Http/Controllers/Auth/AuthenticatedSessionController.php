@@ -62,6 +62,10 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        if ($guard === 'web' && ! $user?->email_verified_at) {
+            return redirect(PortalUrl::to('user', '/verify-email'));
+        }
+
         return redirect()->intended($redirectTo);
     }
 

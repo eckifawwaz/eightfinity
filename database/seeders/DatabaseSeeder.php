@@ -14,8 +14,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $adminEmail = env('ADMIN_SEED_EMAIL', 'admin@eightfinity.com');
-        $adminPassword = env('ADMIN_SEED_PASSWORD', 'Admin@12345');
+        $adminEmail = env('ADMIN_SEED_EMAIL');
+        $adminPassword = env('ADMIN_SEED_PASSWORD');
+
+        if (
+            blank($adminEmail)
+            || blank($adminPassword)
+            || $adminPassword === 'change-this-admin-password'
+            || $adminPassword === 'your-secure-admin-password'
+        ) {
+            $this->command?->warn('Admin seed skipped. Set ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD in .env first.');
+
+            return;
+        }
 
         User::updateOrCreate(
             ['email' => $adminEmail],
@@ -26,17 +37,5 @@ class DatabaseSeeder extends Seeder
                 'role' => 'admin',
             ],
         );
-
-        if (! app()->isProduction()) {
-            User::updateOrCreate(
-                ['email' => 'user@eightfinity.com'],
-                [
-                    'name' => 'EightFinity User',
-                    'phone' => '+6281111111111',
-                    'password' => Hash::make('User@12345'),
-                    'role' => 'user',
-                ],
-            );
-        }
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\EmailVerificationCodeController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminCustomerController;
@@ -42,19 +43,29 @@ Route::middleware('portal:user')->group(function () {
         ->name('logout');
 
     Route::middleware('auth:web')->group(function () {
-        Route::view('/home', 'react')->name('user.home');
-        Route::get('/profile', UserProfileController::class)->name('user.profile');
-        Route::put('/profile', [ProfileController::class, 'update'])->name('user.profile.update');
-        Route::view('/book', 'react')->name('user.book');
-        Route::view('/packages/{slug}', 'react')->name('user.package-detail');
-        Route::view('/payment', 'react')->name('user.payment');
-        Route::post('/payment', [BookingPaymentController::class, 'store'])->name('user.payment.store');
-        Route::get('/payment/success/{booking}', [BookingPaymentController::class, 'success'])
-            ->name('user.payment.success');
-        Route::patch('/bookings/{booking}/cancel', [BookingPaymentController::class, 'cancel'])
-            ->name('user.bookings.cancel');
-        Route::patch('/bookings/{booking}/reschedule', [BookingPaymentController::class, 'reschedule'])
-            ->name('user.bookings.reschedule');
+        Route::get('/verify-email', [EmailVerificationCodeController::class, 'show'])
+            ->name('verification.notice');
+        Route::post('/verify-email', [EmailVerificationCodeController::class, 'verify'])
+            ->name('verification.code.verify');
+        Route::post('/verify-email/resend', [EmailVerificationCodeController::class, 'resend'])
+            ->middleware('throttle:6,1')
+            ->name('verification.code.resend');
+
+        Route::middleware('email.code.verified')->group(function () {
+            Route::view('/home', 'react')->name('user.home');
+            Route::get('/profile', UserProfileController::class)->name('user.profile');
+            Route::put('/profile', [ProfileController::class, 'update'])->name('user.profile.update');
+            Route::view('/book', 'react')->name('user.book');
+            Route::view('/packages/{slug}', 'react')->name('user.package-detail');
+            Route::view('/payment', 'react')->name('user.payment');
+            Route::post('/payment', [BookingPaymentController::class, 'store'])->name('user.payment.store');
+            Route::get('/payment/success/{booking}', [BookingPaymentController::class, 'success'])
+                ->name('user.payment.success');
+            Route::patch('/bookings/{booking}/cancel', [BookingPaymentController::class, 'cancel'])
+                ->name('user.bookings.cancel');
+            Route::patch('/bookings/{booking}/reschedule', [BookingPaymentController::class, 'reschedule'])
+                ->name('user.bookings.reschedule');
+        });
     });
 });
 
