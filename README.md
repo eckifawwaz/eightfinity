@@ -113,6 +113,21 @@ Jalankan migration:
 php artisan migrate
 ```
 
+Jalankan seeder untuk membuat akun admin:
+
+```bash
+php artisan db:seed
+```
+
+Credential admin default mengikuti `.env`:
+
+```env
+ADMIN_SEED_NAME="EightFinity Admin"
+ADMIN_SEED_EMAIL=admin@eightfinity.example.com
+ADMIN_SEED_PASSWORD=change-this-admin-password
+ADMIN_SEED_PHONE=+6280000000000
+```
+
 ## Run Local
 
 Jalankan Vite:
@@ -169,6 +184,7 @@ npm run build
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --force
+php artisan db:seed --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
@@ -183,6 +199,11 @@ APP_DEBUG=false
 APP_URL=https://your-domain.com
 USER_APP_URL=https://your-domain.com
 ADMIN_APP_URL=https://admin.your-domain.com
+
+ADMIN_SEED_NAME="EightFinity Admin"
+ADMIN_SEED_EMAIL=admin@your-domain.com
+ADMIN_SEED_PASSWORD=your-secure-admin-password
+ADMIN_SEED_PHONE=+6280000000000
 
 DB_CONNECTION=mysql
 DB_HOST=your-database-host

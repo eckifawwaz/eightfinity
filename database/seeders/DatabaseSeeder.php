@@ -14,22 +14,29 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $adminEmail = env('ADMIN_SEED_EMAIL', 'admin@eightfinity.com');
+        $adminPassword = env('ADMIN_SEED_PASSWORD', 'Admin@12345');
+
         User::updateOrCreate(
-            ['email' => 'admin@eightfinity.com'],
+            ['email' => $adminEmail],
             [
-                'name' => 'EightFinity Admin',
-                'password' => Hash::make('Admin@12345'),
+                'name' => env('ADMIN_SEED_NAME', 'EightFinity Admin'),
+                'phone' => env('ADMIN_SEED_PHONE', '+6280000000000'),
+                'password' => Hash::make($adminPassword),
                 'role' => 'admin',
             ],
         );
 
-        User::updateOrCreate(
-            ['email' => 'user@eightfinity.com'],
-            [
-                'name' => 'EightFinity User',
-                'password' => Hash::make('User@12345'),
-                'role' => 'user',
-            ],
-        );
+        if (! app()->isProduction()) {
+            User::updateOrCreate(
+                ['email' => 'user@eightfinity.com'],
+                [
+                    'name' => 'EightFinity User',
+                    'phone' => '+6281111111111',
+                    'password' => Hash::make('User@12345'),
+                    'role' => 'user',
+                ],
+            );
+        }
     }
 }
