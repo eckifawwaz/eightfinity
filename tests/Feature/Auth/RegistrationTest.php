@@ -30,6 +30,7 @@ class RegistrationTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'phone' => '+6281234567890',
+            'address' => 'Jl. Eightfinity No. 8',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
@@ -39,6 +40,7 @@ class RegistrationTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'phone' => '+6281234567890',
+            'address' => 'Jl. Eightfinity No. 8',
             'role' => 'user',
         ]);
 
@@ -61,6 +63,7 @@ class RegistrationTest extends TestCase
             'last_name' => 'Putri',
             'email' => 'maya@example.com',
             'phone' => '+6281234567890',
+            'address' => 'Jl. Maya No. 1',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);

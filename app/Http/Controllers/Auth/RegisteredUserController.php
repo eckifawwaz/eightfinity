@@ -40,6 +40,7 @@ class RegisteredUserController extends Controller
             'name' => trim((string) $request->name),
             'phone' => trim((string) $request->phone),
             'alternate_phone' => trim((string) $request->alternate_phone),
+            'address' => trim((string) $request->address),
             'password_confirmation' => $request->password_confirmation ?: $request->password,
         ]);
 
@@ -50,6 +51,7 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['required', 'string', 'max:30'],
             'alternate_phone' => ['nullable', 'string', 'max:30'],
+            'address' => ['nullable', 'string', 'max:1000'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -61,6 +63,7 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'alternate_phone' => $request->alternate_phone,
+            'address' => $request->address,
             'password' => Hash::make($request->password),
             'role' => 'user',
         ]);

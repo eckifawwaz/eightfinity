@@ -29,6 +29,7 @@ export default function UserSignUp() {
                     <label>Email Address<input type="email" name="email" placeholder="you@example.com" required /></label>
                     <label>Phone Number<input name="phone" placeholder="+62 xxx xxxx xxxx" required /></label>
                     <label>Alternate Phone Number<input name="alternate_phone" placeholder="+62 xxx xxxx xxxx" /></label>
+                    <label>Address<input name="address" placeholder="Street, City, Province" /></label>
                     <label>Password<input type="password" name="password" placeholder="At least 8 characters" minLength="8" required /></label>
                     <label>Confirm Password<input type="password" name="password_confirmation" placeholder="Repeat your password" minLength="8" required /></label>
                     <button type="submit" className="primary-button">Create Account</button>

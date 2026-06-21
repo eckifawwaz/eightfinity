@@ -1244,15 +1244,26 @@ select {
     color: #62a9d3;
 }
 
-.package-options article > a {
+.package-choose-button {
     background: #f4a83a;
+    border: none;
     border-radius: 4px;
     color: #fff;
+    cursor: pointer;
     display: flex;
     font-size: 9px;
     font-weight: 900;
     justify-content: center;
+    min-height: 36px;
     padding: 11px;
+    width: 100%;
+}
+
+.package-choose-button:hover,
+.package-choose-button:focus-visible {
+    background: #e79b2f;
+    outline: 2px solid rgba(36, 89, 143, 0.24);
+    outline-offset: 2px;
 }
 
 .package-gallery {

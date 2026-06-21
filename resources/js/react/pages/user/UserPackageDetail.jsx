@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 
 const packageData = {
     wedding: {
@@ -48,11 +48,17 @@ const features = [
 
 export default function UserPackageDetail() {
     const { slug } = useParams();
+    const navigate = useNavigate();
     const detail = packageData[slug];
     const [selectedOption, setSelectedOption] = useState(0);
 
     if (!detail) {
         return <Navigate to="/home" replace />;
+    }
+
+    function choosePackage(optionIndex) {
+        setSelectedOption(optionIndex);
+        navigate(`/book?package=${slug}&option=${optionIndex}`);
     }
 
     return (
@@ -84,7 +90,11 @@ export default function UserPackageDetail() {
                 <h2>Choose Your Package Style</h2>
                 <div className={`package-options package-options-${detail.options.length}`}>
                     {detail.options.map((option, index) => (
-                        <article className={selectedOption === index ? 'selected' : ''} key={option.duration}>
+                        <article
+                            className={selectedOption === index ? 'selected' : ''}
+                            key={option.duration}
+                            onClick={() => setSelectedOption(index)}
+                        >
                             {option.badge && <em>{option.badge}</em>}
                             <header>
                                 <h3>{option.duration}</h3>
@@ -100,12 +110,16 @@ export default function UserPackageDetail() {
                             <ul>
                                 {features.map((feature) => <li key={feature}>✓ {feature}</li>)}
                             </ul>
-                            <Link
-                                to={`/book?package=${slug}&option=${index}`}
-                                onClick={() => setSelectedOption(index)}
+                            <button
+                                className="package-choose-button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    choosePackage(index);
+                                }}
+                                type="button"
                             >
                                 Choose Package
-                            </Link>
+                            </button>
                         </article>
                     ))}
                 </div>

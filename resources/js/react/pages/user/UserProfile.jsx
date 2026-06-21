@@ -212,6 +212,10 @@ export default function UserProfile() {
                                 Alternate Phone
                                 <input name="alternate_phone" defaultValue={user.alternate_phone ?? ''} />
                             </label>
+                            <label>
+                                Address
+                                <input name="address" defaultValue={user.address ?? ''} />
+                            </label>
 
                             <div>
                                 <button type="submit">Save Profile</button>

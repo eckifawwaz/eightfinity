@@ -37,7 +37,7 @@ class UserProfileController extends Controller
                     'email' => $user->email,
                     'phone' => $user->phone,
                     'alternate_phone' => $user->alternate_phone,
-                    'address' => $bookings->first()?->customer_address,
+                    'address' => $user->address ?: $bookings->first()?->customer_address,
                 ],
                 'summary' => [
                     'total_sessions' => $bookings->count(),
