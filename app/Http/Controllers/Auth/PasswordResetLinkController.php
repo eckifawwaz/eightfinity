@@ -15,7 +15,9 @@ class PasswordResetLinkController extends Controller
      */
     public function create(): View
     {
-        return view('react');
+        return view('react', [
+            'authStatus' => session('status'),
+        ]);
     }
 
     /**

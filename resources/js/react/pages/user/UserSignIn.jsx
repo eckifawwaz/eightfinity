@@ -27,7 +27,7 @@ export default function UserSignIn() {
                     </label>
                     <div className="form-row login-options">
                         <label className="check-row"><input type="checkbox" name="remember" />Remember me?</label>
-                        <a href="/login">Forgot Password?</a>
+                        <a href="/forgot-password">Forgot Password?</a>
                     </div>
                     <button type="submit" className="primary-button">Login</button>
                 </form>

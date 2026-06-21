@@ -55,6 +55,21 @@
             window.__FLASH_STATUS__ = @json($verificationStatus);
         </script>
     @endisset
+    @isset($authStatus)
+        <script>
+            window.__AUTH_STATUS__ = @json($authStatus);
+        </script>
+    @endisset
+    @isset($resetToken)
+        <script>
+            window.__RESET_TOKEN__ = @json($resetToken);
+        </script>
+    @endisset
+    @isset($resetEmail)
+        <script>
+            window.__RESET_EMAIL__ = @json($resetEmail);
+        </script>
+    @endisset
     @if ($errors->any())
         <script>
             window.__FORM_ERRORS__ = @json($errors->all());

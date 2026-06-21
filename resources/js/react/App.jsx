@@ -22,6 +22,8 @@ import UserPackageDetail from './pages/user/UserPackageDetail';
 import UserPayment from './pages/user/UserPayment';
 import UserPaymentSuccess from './pages/user/UserPaymentSuccess';
 import UserProfile from './pages/user/UserProfile';
+import UserForgotPassword from './pages/user/UserForgotPassword';
+import UserResetPassword from './pages/user/UserResetPassword';
 import UserSignIn from './pages/user/UserSignIn';
 import UserSignUp from './pages/user/UserSignUp';
 import UserVerifyEmail from './pages/user/UserVerifyEmail';
@@ -54,6 +56,8 @@ function App() {
                 <Route path="/" element={<Navigate to="/register" replace />} />
                 <Route path="/login" element={<UserSignIn />} />
                 <Route path="/register" element={<UserSignUp />} />
+                <Route path="/forgot-password" element={<UserForgotPassword />} />
+                <Route path="/reset-password/:token" element={<UserResetPassword />} />
                 <Route path="/verify-email" element={<UserVerifyEmail />} />
                 <Route path="/home" element={<UserHome />} />
                 <Route path="/book" element={<UserBook />} />

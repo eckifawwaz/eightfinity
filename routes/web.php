@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationCodeController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminCustomerController;
@@ -37,6 +39,22 @@ Route::middleware('portal:user')->group(function () {
     Route::post('/register', [RegisteredUserController::class, 'store'])
         ->middleware('guest:web')
         ->name('register.process');
+
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->middleware('guest:web')
+        ->name('password.request');
+
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('guest:web')
+        ->name('password.email');
+
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
+        ->middleware('guest:web')
+        ->name('password.reset');
+
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('guest:web')
+        ->name('password.store');
 
     Route::match(['get', 'post'], '/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->middleware('auth:web')
