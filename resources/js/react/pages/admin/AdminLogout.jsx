@@ -5,7 +5,7 @@ export default function AdminLogout() {
     return (
         <main className="admin-logout-page">
             <section className="logout-modal">
-                <img src="/image/logo-icon.png" alt="EightFinity" />
+                <img src="/image/logo-icon-transparent.png" alt="EightFinity" />
                 <h1>Are you sure you want to sign out?</h1>
                 <p>You will be signed out of your account on this device.</p>
 

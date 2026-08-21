@@ -5219,9 +5219,10 @@ form.admin-security-row {
 }
 
 .logout-modal img {
-    height: 64px;
+    height: 56px;
     margin-bottom: 28px;
-    width: 64px;
+    object-fit: contain;
+    width: 46px;
 }
 
 .logout-modal h1 {

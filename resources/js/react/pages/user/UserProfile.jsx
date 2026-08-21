@@ -217,7 +217,7 @@ export default function UserProfile() {
             {showLogoutConfirm && (
                 <section className="user-logout-overlay" role="dialog" aria-modal="true">
                     <div className="logout-modal user-logout-modal">
-                        <img src="/image/logo-icon.png" alt="EightFinity" />
+                        <img src="/image/logo-icon-transparent.png" alt="EightFinity" />
                         <h1>Are you sure you want to sign out?</h1>
                         <p>You will be signed out of your account on this device.</p>
 
