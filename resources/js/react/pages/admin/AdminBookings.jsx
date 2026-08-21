@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { csrfToken } from '../../utils/csrf';
 
 const packageDurations = {
-    'Wedding Package': ['8 hours'],
+    'Wedding Package': ['4 hours', '8 hours'],
     'Reservation Package': ['4 hours', '4+1 hours'],
     'Unlimited Package': ['2 hours', '3 hours', '4 hours'],
 };
@@ -72,6 +72,7 @@ export default function AdminBookings() {
                         <a href="/admin/queue"><span>◌</span>Manage Queue</a>
                         <a href="/admin/customers"><span>▤</span>Customer Data</a>
                         <a href="/admin/layout"><span>◇</span>2D Layout View</a>
+                        <a href="/admin/revenue"><span>◆</span>Revenue</a>
                     </nav>
                 </div>
 
@@ -125,7 +126,7 @@ export default function AdminBookings() {
                                 <th>Customer</th>
                                 <th>Package</th>
                                 <th>Date & Time</th>
-                                <th>People</th>
+                                <th>Room Size</th>
                                 <th>Status</th>
                                 <th>Amount</th>
                                 <th>Actions</th>
@@ -151,7 +152,7 @@ export default function AdminBookings() {
                                             <span>▫ {formatDate(booking.booking_date)}</span>
                                             <small>◷ {booking.booking_time}</small>
                                         </td>
-                                        <td>{booking.people}</td>
+                                        <td>{booking.booth_size ?? '3 x 3 meter'}</td>
                                         <td><span className={`status-pill ${booking.status}`}>{booking.status}</span></td>
                                         <td>
                                             <strong>{currency.format(booking.amount ?? 0)}</strong>
@@ -174,6 +175,37 @@ export default function AdminBookings() {
                                                 </select>
                                                 <button type="submit">Save</button>
                                             </form>
+                                            <div className="booking-row-actions">
+                                                {booking.status !== 'cancelled' && (
+                                                    <form
+                                                        method="POST"
+                                                        action={`/admin/bookings/${booking.id}/status`}
+                                                        onSubmit={(event) => {
+                                                            if (!window.confirm('Cancel this booking?')) {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <input type="hidden" name="_method" value="PATCH" />
+                                                        <input type="hidden" name="status" value="cancelled" />
+                                                        <button className="booking-cancel-button" type="submit">Cancel</button>
+                                                    </form>
+                                                )}
+                                                <form
+                                                    method="POST"
+                                                    action={`/admin/bookings/${booking.id}`}
+                                                    onSubmit={(event) => {
+                                                        if (!window.confirm('Delete this booking permanently?')) {
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
+                                                >
+                                                    <input type="hidden" name="_token" value={csrfToken} />
+                                                    <input type="hidden" name="_method" value="DELETE" />
+                                                    <button className="booking-delete-button" type="submit">Delete</button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 );

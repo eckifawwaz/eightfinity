@@ -12,10 +12,15 @@ class AdminDashboardController extends Controller
     {
         $today = today();
 
-        $bookingsToday = Booking::whereDate('booking_date', $today)->count();
-        $activeSessions = Booking::where('status', 'confirmed')->count();
-        $queueLength = Booking::where('status', 'pending')->count();
-        $revenueToday = Booking::whereDate('booking_date', $today)
+        $bookingsThisMonth = Booking::whereYear('booking_date', $today->year)
+            ->whereMonth('booking_date', $today->month)
+            ->count();
+        $waitingConfirmation = Booking::where('status', 'pending')->count();
+        $upcomingEvents = Booking::whereIn('status', ['pending', 'confirmed'])
+            ->whereDate('booking_date', '>', $today)
+            ->count();
+        $revenueThisMonth = Booking::whereYear('booking_date', $today->year)
+            ->whereMonth('booking_date', $today->month)
             ->whereIn('status', ['confirmed', 'completed'])
             ->sum('amount');
 
@@ -49,10 +54,10 @@ class AdminDashboardController extends Controller
         return view('react', [
             'adminDashboard' => [
                 'metrics' => [
-                    'bookings_today' => $bookingsToday,
-                    'active_sessions' => $activeSessions,
-                    'queue_length' => $queueLength,
-                    'revenue_today' => $revenueToday,
+                    'bookings_this_month' => $bookingsThisMonth,
+                    'waiting_confirmation' => $waitingConfirmation,
+                    'upcoming_events' => $upcomingEvents,
+                    'revenue_this_month' => $revenueThisMonth,
                 ],
                 'recent_bookings' => $recentBookings,
                 'package_stats' => $packageStats,

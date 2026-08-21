@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { csrfToken } from '../../utils/csrf';
 
 export default function AdminLogin() {
+    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const [showPassword, setShowPassword] = useState(false);
+
     return (
         <main className="login-page">
             <section className="login-brand-panel">
@@ -9,12 +12,18 @@ export default function AdminLogin() {
                 <h2>Capture Your Infinite Moments</h2>
             </section>
             <section className="login-card">
-                <img src="/image/logo-icon.png" alt="EightFinity" className="login-icon" />
+                <img src="/image/logo-icon-transparent.png" alt="EightFinity" className="login-icon" />
                 <span className="login-eyebrow">Sign In</span>
                 <h1>Welcome Back!</h1>
                 <p>Sign in to your Eightfinity admin account to manage bookings.</p>
                 <form method="POST" action="/admin/login" className="form-stack">
                     <input type="hidden" name="_token" value={csrfToken} />
+                    {formErrors.length > 0 && (
+                        <section className="auth-error-card">
+                            <strong>Login could not be completed</strong>
+                            {formErrors.map((error) => <p key={error}>{error}</p>)}
+                        </section>
+                    )}
                     <label>
                         Email Address
                         <input type="email" name="email" placeholder="you@example.com" required autoFocus />
@@ -22,17 +31,23 @@ export default function AdminLogin() {
                     <label>
                         Password
                         <span className="password-field">
-                            <input type="password" name="password" placeholder="At least 8 characters" required />
-                            <span aria-hidden="true">◎</span>
+                            <input type={showPassword ? 'text' : 'password'} name="password" placeholder="At least 8 characters" required />
+                            <button
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                                type="button"
+                            >
+                                ◎
+                            </button>
                         </span>
-                        <small>use 8+ characters with letters and numbers</small>
+                        <small>Use 8+ characters with at least 1 uppercase letter and 1 number</small>
                     </label>
                     <div className="form-row login-options">
                         <label className="check-row">
                             <input type="checkbox" name="remember" />
                             Remember me?
                         </label>
-                        <a href="/admin/login">Forgot Password?</a>
                     </div>
                     <button type="submit" className="primary-button">Login</button>
                 </form>

@@ -28,7 +28,6 @@ class AdminLayoutController extends Controller
                 'layout_name' => $booking->layout_name ?? 'Wedding Setup',
                 'booth_size' => $booking->booth_size ?? '3 x 3 meter',
                 'printer_position' => $booking->printer_position ?? 'inside',
-                'entrance_direction' => $booking->entrance_direction ?? 'left',
                 'layout_positions' => $booking->layout_positions,
                 'status' => $booking->status,
             ]);
@@ -47,7 +46,6 @@ class AdminLayoutController extends Controller
             'layout_name' => ['required', 'in:Wedding Setup,Corporate Event,Birthday Party,Graduation Setup,Custom Client Setup'],
             'booth_size' => ['required', 'in:3 x 3 meter,4 x 4 meter,5 x 5 meter'],
             'printer_position' => ['required', 'in:inside,outside'],
-            'entrance_direction' => ['required', 'in:left,right'],
             'layout_positions' => ['nullable', 'json'],
         ]);
 

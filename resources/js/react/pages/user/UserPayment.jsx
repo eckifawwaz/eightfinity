@@ -1,17 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
 
 const packages = {
     wedding: {
         name: 'Wedding Package',
-        options: [{ duration: '8 Hours', amount: 5800000 }],
+        options: [
+            { duration: '4 Hours', amount: 3000000 },
+            { duration: '6 Hours', amount: 4500000 },
+            { duration: '8 Hours', amount: 5800000 },
+        ],
     },
     reservation: {
         name: 'Reservation Package',
         options: [
+            { duration: '3 Hours', amount: 799000 },
             { duration: '4 Hours', amount: 899000 },
-            { duration: '4+1 Hours', amount: 899000 },
+            { duration: '4+1 Hours', amount: 999000 },
         ],
     },
     unlimited: {
@@ -69,16 +74,18 @@ export default function UserPayment() {
     const optionIndex = Number(params.get('option')) || 0;
     const selectedPackage = packages[packageSlug];
     const selectedOption = selectedPackage.options[optionIndex] ?? selectedPackage.options[0];
+    const usesMidtransPaymentLink = packageSlug === 'wedding' || packageSlug === 'reservation' || packageSlug === 'unlimited';
     const paymentPayload = [
         'EIGHTFINITY',
         selectedPackage.name,
         selectedOption.amount,
         params.get('date') ?? '',
         params.get('time') ?? '',
-        params.get('people') ?? '1',
+        params.get('booth_size') ?? '',
     ].join('|');
     const qrPattern = useMemo(() => buildQrPattern(paymentPayload), [paymentPayload]);
     const qrExpiry = '00 : 15 : 00';
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     function downloadQr() {
         const svg = document.querySelector('.payment-qr-code svg');
@@ -112,13 +119,13 @@ export default function UserPayment() {
                 <i className="book-dot dot-c" /><i className="book-dot dot-d" /><i className="book-dot dot-e" />
             </section>
 
-            <form action="/payment" method="POST">
+            <form action="/payment" method="POST" onSubmit={() => setIsSubmitting(true)}>
                 <input type="hidden" name="_token" value={csrfToken} />
                 <input type="hidden" name="package" value={packageSlug} />
                 <input type="hidden" name="option" value={optionIndex} />
                 <input type="hidden" name="date" value={params.get('date') ?? ''} />
                 <input type="hidden" name="time" value={params.get('time') ?? ''} />
-                <input type="hidden" name="people" value={params.get('people') ?? '1'} />
+                <input type="hidden" name="booth_size" value={params.get('booth_size') ?? ''} />
                 <input type="hidden" name="address" value={params.get('address') ?? ''} />
                 <input type="hidden" name="location" value={params.get('location') ?? ''} />
                 <input type="hidden" name="payment_method" value="qris" />
@@ -127,7 +134,7 @@ export default function UserPayment() {
                 <div className="user-payment-content">
                     <div className="section-title payment-section-title">
                         <h2>Payment</h2>
-                        <p>Scan the QR to do payment</p>
+                        <p>{usesMidtransPaymentLink ? 'Continue to Midtrans to choose your payment method' : 'Scan the QR to do payment'}</p>
                     </div>
 
                     <aside className="booking-summary-card">
@@ -137,7 +144,7 @@ export default function UserPayment() {
                             <div><dt>Duration</dt><dd>{selectedOption.duration}</dd></div>
                             <div><dt>Date</dt><dd>{params.get('date')}</dd></div>
                             <div><dt>Time</dt><dd>{params.get('time')}</dd></div>
-                            <div><dt>Number of pax</dt><dd>{params.get('people')}</dd></div>
+                            <div><dt>Room Size</dt><dd>{params.get('booth_size')}</dd></div>
                             <div><dt>Address</dt><dd>{params.get('address') ?? '-'}</dd></div>
                             <div><dt>Location</dt><dd>{params.get('location') ?? '-'}</dd></div>
                         </dl>
@@ -156,55 +163,95 @@ export default function UserPayment() {
                         )}
 
                         <section className="payment-qr-card">
-                            <div className="payment-proof-head">
-                                <span className="payment-proof-icon">▤</span>
-                                <strong>QR Code</strong>
-                            </div>
+                            {usesMidtransPaymentLink ? (
+                                <>
+                                    <div className="payment-proof-head">
+                                        <div>
+                                            <strong>Payment</strong>
+                                            <small>Pilih QRIS, e-wallet, virtual account, atau kartu di halaman pembayaran.</small>
+                                        </div>
+                                    </div>
 
-                            <div className="payment-qr-body">
-                                <div className="payment-qr-code" aria-label="Eightfinity payment QR">
-                                    <svg viewBox="0 0 25 25" role="img">
-                                        <rect width="25" height="25" fill="#ffffff" />
-                                        {qrPattern.map((row, rowIndex) => row.map((active, colIndex) => (
-                                            active ? (
-                                                <rect
-                                                    fill="#0b0f16"
-                                                    height="1"
-                                                    key={`${rowIndex}-${colIndex}`}
-                                                    width="1"
-                                                    x={colIndex}
-                                                    y={rowIndex}
-                                                />
-                                            ) : null
-                                        )))}
-                                    </svg>
-                                </div>
+                                    <div className="midtrans-payment-panel">
+                                        <strong>Ready to pay</strong>
+                                        <p>
+                                            Setelah tombol ditekan, booking akan tersimpan lalu kamu masuk ke halaman
+                                            pembayaran untuk menyelesaikan transaksi.
+                                        </p>
+                                        <dl>
+                                            <div><dt>Amount</dt><dd>{currency.format(selectedOption.amount)}</dd></div>
+                                            <div>
+                                                <dt>Status</dt>
+                                                <dd className="midtrans-status-live">
+                                                    <i className="midtrans-status-dot" />
+                                                    Menunggu pembayaran
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    </div>
 
-                                <div className="payment-qr-instructions">
-                                    <strong>Cara Membayar dengan Kode QR</strong>
-                                    <ol>
-                                        <li>Buka aplikasi bank atau e-wallet</li>
-                                        <li>Scan atau upload Kode QR</li>
-                                        <li>Periksa kembali total pembayaran</li>
-                                        <li>Selesaikan pembayaran</li>
-                                    </ol>
-                                    <button className="payment-download-qr" onClick={downloadQr} type="button">
-                                        Download Kode QR
+                                    <button className="complete-payment-button" disabled={isSubmitting} type="submit">
+                                        {isSubmitting ? (
+                                            <>
+                                                <i className="button-spinner" />
+                                                Menghubungkan ke pembayaran...
+                                            </>
+                                        ) : 'Bayar Sekarang'}
                                     </button>
-                                    <span>Kode berlaku hingga {qrExpiry}</span>
-                                </div>
-                            </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="payment-proof-head">
+                                        <span className="payment-proof-icon">▤</span>
+                                        <strong>QR Code</strong>
+                                    </div>
 
-                            <button className="complete-payment-button" type="submit">
-                                Cek pembayaran
-                            </button>
+                                    <div className="payment-qr-body">
+                                        <div className="payment-qr-code" aria-label="Eightfinity payment QR">
+                                            <svg viewBox="0 0 25 25" role="img">
+                                                <rect width="25" height="25" fill="#ffffff" />
+                                                {qrPattern.map((row, rowIndex) => row.map((active, colIndex) => (
+                                                    active ? (
+                                                        <rect
+                                                            fill="#0b0f16"
+                                                            height="1"
+                                                            key={`${rowIndex}-${colIndex}`}
+                                                            width="1"
+                                                            x={colIndex}
+                                                            y={rowIndex}
+                                                        />
+                                                    ) : null
+                                                )))}
+                                            </svg>
+                                        </div>
+
+                                        <div className="payment-qr-instructions">
+                                            <strong>Cara Membayar dengan Kode QR</strong>
+                                            <ol>
+                                                <li>Buka aplikasi bank atau e-wallet</li>
+                                                <li>Scan atau upload Kode QR</li>
+                                                <li>Periksa kembali total pembayaran</li>
+                                                <li>Selesaikan pembayaran</li>
+                                            </ol>
+                                            <button className="payment-download-qr" onClick={downloadQr} type="button">
+                                                Download Kode QR
+                                            </button>
+                                            <span>Kode berlaku hingga {qrExpiry}</span>
+                                        </div>
+                                    </div>
+
+                                    <button className="complete-payment-button" type="submit">
+                                        Cek pembayaran
+                                    </button>
+                                </>
+                            )}
                         </section>
                     </section>
                 </div>
             </form>
 
             <footer className="user-book-footer">
-                <div><img src="/image/logo-icon.png" alt="" /><strong>EightFinity</strong></div>
+                <div><img src="/image/logo-icon-transparent.png" alt="" /><strong>EightFinity</strong></div>
                 <p>Capture Your Infinite Moments</p>
                 <small>© 2026 Eightfinity. All rights reserved.</small>
             </footer>

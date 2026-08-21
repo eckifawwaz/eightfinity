@@ -1,14 +1,53 @@
 import React, { useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import SocialLinks from '../../components/SocialLinks';
+
+const unlimitedFeatures = [
+    'Unlimited photo session',
+    'Unlimited print',
+    'DSLR Camera',
+    'Professional lighting',
+    '2 Booth Operators',
+    'Custom photo frame',
+    'Basic props',
+    'Softcopy via QR Code/AirDrop',
+    'Setup & dismantle',
+];
+
+const weddingFeatures = [
+    'Unlimited photo session',
+    'Unlimited print',
+    'DSLR Camera',
+    'Professional lighting',
+    '6 Booth Operators',
+    'Custom photo frame',
+    'Basic props',
+    'Softcopy via QR Code/AirDrop',
+    'Setup & dismantle',
+];
+
+const reservationFeatures = [
+    'DSLR Camera',
+    'Professional lighting',
+    'Custom photo frame',
+    'Basic props',
+    'Softcopy via QR Code/AirDrop',
+    'Setup & dismantle',
+];
 
 const packageData = {
     wedding: {
         name: 'Wedding Package',
         breadcrumb: 'Wedding Package',
-        image: '/image/user-dashboard/package-wedding.png',
-        galleryTitle: 'Examples of Our Photo Results',
-        gallerySubtitle: 'Capture every precious moment with our professional photo quality',
+        image: '/image/user-dashboard/package-wedding-v2.png',
+        description: [
+            'Make your wedding day even more unforgettable with our exclusive Wedding Package.',
+            'This package is specially designed to capture the most precious moments of your life, offering a premium photobooth experience that is elegant, modern, and memorable.',
+        ],
+        features: weddingFeatures,
         options: [
+            { duration: 'Duration 4 Hours', price: 'Rp 3,000,000', badge: '' },
+            { duration: 'Duration 6 Hours', price: 'Rp 4,500,000', badge: '' },
             { duration: 'Duration 8 Hours', price: 'Rp 5,800,000', badge: '' },
         ],
     },
@@ -16,19 +55,26 @@ const packageData = {
         name: 'Reservation Package',
         breadcrumb: 'Event Package',
         image: '/image/user-dashboard/package-reservation.png',
-        galleryTitle: 'Showcase of Our Event Photos',
-        gallerySubtitle: 'Capture every unforgettable moment with our professional photo quality',
+        description: [
+            'Bring a professional photobooth experience to every special moment.',
+            'Our Reservation Package is designed for corporate events, weddings, birthday parties, gatherings, and private celebrations. Guests can enjoy a smooth, fun, and unlimited photo experience, capturing every laugh, pose, and memory without worrying about photo limits.',
+        ],
+        features: reservationFeatures,
         options: [
+            { duration: 'Duration 3 Hours', price: 'Rp 799,000', badge: '' },
             { duration: 'Duration 4 Hours', price: 'Rp 899,000', badge: '' },
-            { duration: 'Duration 4+1 Hours', price: 'Rp 899,000', badge: 'Most Popular' },
+            { duration: 'Duration 4+1 Hours', price: 'Rp 999,000', badge: 'Most Popular' },
         ],
     },
     unlimited: {
         name: 'Unlimited Package',
         breadcrumb: 'School Package',
         image: '/image/user-dashboard/package-unlimited.png',
-        galleryTitle: 'Examples of Our Photo Results',
-        gallerySubtitle: 'Capture every precious moment with our professional photo quality',
+        description: [
+            'Enjoy a limitless photobooth experience with EightFinity’s Unlimited Package.',
+            'There are no restrictions on the number of photos and no limits on fun. Every moment can be captured as many times as you want.',
+        ],
+        features: unlimitedFeatures,
         options: [
             { duration: 'Duration 2 Hours', price: 'Rp 2,000,000', badge: '' },
             { duration: 'Duration 3 Hours', price: 'Rp 2,500,000', badge: '' },
@@ -36,15 +82,6 @@ const packageData = {
         ],
     },
 };
-
-const features = [
-    'Free design frame',
-    'QR share media',
-    'Photo share media',
-    'Physical photo print 6R only',
-    'Unlimited photo print',
-    'Unlimited photo file daily',
-];
 
 export default function UserPackageDetail() {
     const { slug } = useParams();
@@ -80,7 +117,12 @@ export default function UserPackageDetail() {
             <section className="package-detail-hero">
                 <img src={detail.image} alt={detail.name} />
                 <div className="package-detail-overlay" />
-                <h1>{detail.name}</h1>
+                <div className="package-hero-copy">
+                    <h1>{detail.name}</h1>
+                    {detail.description && detail.description.map((paragraph) => (
+                        <p key={paragraph}>{paragraph}</p>
+                    ))}
+                </div>
                 <i className="package-deco deco-one" />
                 <i className="package-deco deco-two" />
                 <i className="package-deco deco-three" />
@@ -108,7 +150,7 @@ export default function UserPackageDetail() {
                                 </button>
                             </label>
                             <ul>
-                                {features.map((feature) => <li key={feature}>✓ {feature}</li>)}
+                                {detail.features.map((feature) => <li key={feature}>✓ {feature}</li>)}
                             </ul>
                             <button
                                 className="package-choose-button"
@@ -125,28 +167,13 @@ export default function UserPackageDetail() {
                 </div>
             </section>
 
-            <section className="package-gallery">
-                <h2>{detail.galleryTitle}</h2>
-                <p>{detail.gallerySubtitle}</p>
-                <div className="package-gallery-featured">
-                    <img src={detail.image} alt={`${detail.name} featured result`} />
-                    <span>{detail.name} Event</span>
-                </div>
-                <div className="package-gallery-thumbs">
-                    {[1, 2, 3, 4, 5].map((item) => (
-                        <img key={item} src={detail.image} alt={`${detail.name} gallery ${item}`} />
-                    ))}
-                </div>
-                <div className="gallery-dots"><b /><i /><i /></div>
-            </section>
-
             <footer className="package-detail-footer">
                 <div className="customer-brand">
-                    <img src="/image/logo-icon.png" alt="" />
+                    <img src="/image/logo-icon-transparent.png" alt="" />
                     <strong>EightFinity</strong>
                 </div>
                 <p>Capture Your Infinite Moments</p>
-                <div><span>◉ WhatsApp</span><span>▣ Instagram</span></div>
+                <SocialLinks className="customer-socials" />
                 <small>© 2026 Eightfinity. All rights reserved.</small>
             </footer>
         </main>

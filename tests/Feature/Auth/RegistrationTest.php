@@ -31,8 +31,8 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'phone' => '+6281234567890',
             'address' => 'Jl. Eightfinity No. 8',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1',
+            'password_confirmation' => 'Password1',
         ]);
 
         $this->assertAuthenticated();
@@ -64,8 +64,8 @@ class RegistrationTest extends TestCase
             'email' => 'maya@example.com',
             'phone' => '+6281234567890',
             'address' => 'Jl. Maya No. 1',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1',
+            'password_confirmation' => 'Password1',
         ]);
 
         $this->assertAuthenticated('web');
@@ -87,10 +87,26 @@ class RegistrationTest extends TestCase
 
         $loginResponse = $this->post('/login', [
             'email' => 'maya@example.com',
-            'password' => 'password',
+            'password' => 'Password1',
         ]);
 
         $this->assertAuthenticated('web');
         $loginResponse->assertRedirect(PortalUrl::to('user', RouteServiceProvider::HOME));
+    }
+
+    public function test_new_user_password_must_contain_uppercase_letter_and_number(): void
+    {
+        Mail::fake();
+
+        $response = $this->post('/register', [
+            'name' => 'Test User',
+            'email' => 'weak@example.com',
+            'phone' => '+6281234567890',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors('password');
+        $this->assertGuest();
     }
 }

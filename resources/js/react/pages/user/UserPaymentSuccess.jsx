@@ -1,8 +1,11 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import SocialLinks from '../../components/SocialLinks';
+import { buildReceiptHtml } from '../../utils/receipt';
+import { flowSteps } from '../../utils/experienceFlow';
 
 const packageDurations = {
-    'Wedding Package': ['8 hours'],
+    'Wedding Package': ['4 hours', '8 hours'],
     'Reservation Package': ['4 hours', '4+1 hours'],
     'Unlimited Package': ['2 hours', '3 hours', '4 hours'],
 };
@@ -25,40 +28,65 @@ function formatDate(value) {
     }).format(date);
 }
 
-const currency = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-});
-
 export default function UserPaymentSuccess() {
-    const booking = window.__BOOKING__ ?? {};
-    const duration = packageDurations[booking.package_name]?.[booking.package_option] ?? '-';
-    const bookingCode = booking.booking_code ?? 'receipt';
+    const { booking: bookingId } = useParams();
+    const [booking, setBooking] = useState(() => (
+        window.__BOOKING__ && String(window.__BOOKING__.id) === bookingId ? window.__BOOKING__ : null
+    ));
+    const [loadError, setLoadError] = useState('');
+
+    useEffect(() => {
+        let isMounted = true;
+
+        fetch(`/payment/success/${bookingId}/data`, {
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((response) => {
+                if (response.redirected || response.status === 401) {
+                    window.location.href = '/login';
+                    return null;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Booking request failed');
+                }
+
+                return response.json();
+            })
+            .then((data) => {
+                if (isMounted && data) {
+                    setBooking(data);
+                }
+            })
+            .catch(() => {
+                if (isMounted) {
+                    setLoadError('Unable to load this booking.');
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [bookingId]);
+
+    const isLoadingBooking = !booking && !loadError;
+    const activeBooking = booking ?? {};
+    const duration = packageDurations[activeBooking.package_name]?.[activeBooking.package_option] ?? '-';
+    const bookingCode = activeBooking.booking_code ?? 'receipt';
 
     function downloadReceipt() {
-        const receipt = [
-            'EIGHTFINITY PAYMENT RECEIPT',
-            '==========================',
-            `Booking ID       : #${bookingCode}`,
-            `Package          : ${booking.package_name ?? '-'}`,
-            `Date & Time      : ${formatDate(booking.booking_date)} at ${booking.booking_time ?? '-'}`,
-            `Duration         : ${duration}`,
-            `Number of pax    : ${booking.people ?? '-'}`,
-            `Booking Location : ${booking.booking_location ?? '-'}`,
-            `Customer Address : ${booking.customer_address ?? '-'}`,
-            `Total Payment    : ${currency.format(booking.amount ?? 0)}`,
-            `Status           : ${(booking.status ?? 'pending').toUpperCase()}`,
-            '',
-            'Please save this receipt for your session.',
-            'Capture Your Infinite Moments',
-        ].join('\n');
+        const logoUrl = `${window.location.origin}/image/logo-wordmark.png`;
+        const receipt = buildReceiptHtml(activeBooking, logoUrl);
 
-        const blob = new Blob([receipt], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([receipt], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `eightfinity-receipt-${bookingCode}.txt`;
+        link.download = `eightfinity-receipt-${bookingCode}.html`;
         link.click();
         URL.revokeObjectURL(url);
     }
@@ -76,21 +104,27 @@ export default function UserPaymentSuccess() {
             <section className="payment-confirm-hero">
                 <div className="payment-confirm-panel">
                     <span className="payment-confirm-badge">✓</span>
-                    <h1>Booking <span>Confirmed!</span></h1>
+                    <h1>Payment <span>Success!</span></h1>
                     <p>Your payment has been processed successfully. Get ready for an amazing photo session!</p>
                     <div className="payment-confirm-actions">
-                        <Link className="payment-confirm-primary" to="/home">Check Equipment Delivery Status</Link>
-                        <button className="payment-confirm-secondary" onClick={downloadReceipt} type="button">
+                        <Link className="payment-confirm-primary" to="/profile">Check Your Booking</Link>
+                        <button
+                            className="payment-confirm-secondary"
+                            onClick={downloadReceipt}
+                            type="button"
+                            disabled={isLoadingBooking}
+                        >
                             ↓ Download Receipt
                         </button>
                     </div>
+                    {loadError && <p className="payment-confirm-error">{loadError}</p>}
                 </div>
             </section>
 
             <section className="payment-details-section">
                 <div className="payment-details-title">
                     <h2>Your Booking Details</h2>
-                    <p>Save this information for your session</p>
+                    <p>{isLoadingBooking ? 'Loading your booking details...' : 'Save this information for your session'}</p>
                 </div>
 
                 <div className="payment-details-grid">
@@ -102,11 +136,11 @@ export default function UserPaymentSuccess() {
                         <dl>
                             <div>
                                 <dt>Package</dt>
-                                <dd>{booking.package_name ?? '-'}</dd>
+                                <dd>{activeBooking.package_name ?? '-'}</dd>
                             </div>
                             <div>
                                 <dt>Date &amp; Time</dt>
-                                <dd>{formatDate(booking.booking_date)} at {booking.booking_time ?? '-'}</dd>
+                                <dd>{formatDate(activeBooking.booking_date)} at {activeBooking.booking_time ?? '-'}</dd>
                             </div>
                             <div>
                                 <dt>Duration</dt>
@@ -114,24 +148,29 @@ export default function UserPaymentSuccess() {
                             </div>
                             <div>
                                 <dt>Booking ID</dt>
-                                <dd className="payment-booking-code">#{booking.booking_code ?? '-'}</dd>
+                                <dd className="payment-booking-code">#{activeBooking.booking_code ?? '-'}</dd>
                             </div>
                         </dl>
                     </article>
 
                     <article className="payment-detail-card">
                         <div className="payment-detail-head">
-                            <span className="payment-detail-icon">⌖</span>
+                            <span className="payment-detail-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="7" />
+                                    <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                                </svg>
+                            </span>
                             <strong>Location &amp; Instructions</strong>
                         </div>
                         <dl>
                             <div>
                                 <dt>Booking Location</dt>
-                                <dd>{booking.booking_location ?? '-'}</dd>
+                                <dd>{activeBooking.booking_location ?? '-'}</dd>
                             </div>
                             <div>
-                                <dt>Customer Address</dt>
-                                <dd>{booking.customer_address ?? '-'}</dd>
+                                <dt>Booking Address</dt>
+                                <dd>{activeBooking.customer_address ?? '-'}</dd>
                             </div>
                             <div>
                                 <dt>Venue Setup Instructions</dt>
@@ -146,13 +185,25 @@ export default function UserPaymentSuccess() {
                 </div>
             </section>
 
-            <footer className="user-book-footer payment-success-footer">
-                <div><img src="/image/logo-icon.png" alt="" /><strong>EightFinity</strong></div>
-                <p>Capture Your Infinite Moments</p>
-                <div className="payment-footer-socials">
-                    <span>◉ Whatsapp</span>
-                    <span>▣ Instagram</span>
+            <section className="experience-flow-card payment-experience-flow">
+                <h2>Experience Flow</h2>
+                <p>Your photo booth journey steps</p>
+                <div className="flow-steps">
+                    {flowSteps.map(([number, image, title, subtitle]) => (
+                        <article key={number} className="flow-step">
+                            <span className={`flow-number step-${number}`}>{number}</span>
+                            <img className="flow-step-image" src={image} alt="" />
+                            <strong>{title}</strong>
+                            <small>{subtitle}</small>
+                        </article>
+                    ))}
                 </div>
+            </section>
+
+            <footer className="user-book-footer payment-success-footer">
+                <div><img src="/image/logo-icon-transparent.png" alt="" /><strong>EightFinity</strong></div>
+                <p>Capture Your Infinite Moments</p>
+                <SocialLinks className="payment-footer-socials" />
                 <small>© 2026 Eightfinity. All rights reserved.</small>
             </footer>
         </main>

@@ -2,12 +2,48 @@ import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
 
+const weddingFeatures = [
+    'Unlimited photo session',
+    'Unlimited print',
+    'DSLR Camera',
+    'Professional lighting',
+    '6 Booth Operators',
+    'Custom photo frame',
+    'Basic props',
+    'Softcopy via QR Code/AirDrop',
+    'Setup & dismantle',
+];
+
+const reservationFeatures = [
+    'DSLR Camera',
+    'Professional lighting',
+    'Custom photo frame',
+    'Basic props',
+    'Softcopy via QR Code/AirDrop',
+    'Setup & dismantle',
+];
+
+const unlimitedFeatures = [
+    'Unlimited photo session',
+    'Unlimited print',
+    'DSLR Camera',
+    'Professional lighting',
+    '2 Booth Operators',
+    'Custom photo frame',
+    'Basic props',
+    'Softcopy via QR Code/AirDrop',
+    'Setup & dismantle',
+];
+
 const packages = {
     wedding: {
         name: 'Wedding Package',
         description: 'Elegant photo booth coverage for your wedding celebration',
-        image: '/image/user-dashboard/package-wedding.png',
+        image: '/image/user-dashboard/package-wedding-v2.png',
+        features: weddingFeatures,
         options: [
+            { duration: '4 Hours', price: 'Rp 3,000,000' },
+            { duration: '6 Hours', price: 'Rp 4,500,000' },
             { duration: '8 Hours', price: 'Rp 5,800,000' },
         ],
     },
@@ -15,15 +51,18 @@ const packages = {
         name: 'Reservation Package',
         description: 'Flexible photo booth service for private and corporate events',
         image: '/image/user-dashboard/package-reservation.png',
+        features: reservationFeatures,
         options: [
+            { duration: '3 Hours', price: 'Rp 799,000' },
             { duration: '4 Hours', price: 'Rp 899,000' },
-            { duration: '4+1 Hours', price: 'Rp 899,000' },
+            { duration: '4+1 Hours', price: 'Rp 999,000' },
         ],
     },
     unlimited: {
         name: 'Unlimited Package',
         description: 'Unlimited fun and photos for school or community events',
         image: '/image/user-dashboard/package-unlimited.png',
+        features: unlimitedFeatures,
         options: [
             { duration: '2 Hours', price: 'Rp 2,000,000' },
             { duration: '3 Hours', price: 'Rp 2,500,000' },
@@ -33,30 +72,33 @@ const packages = {
 };
 
 const timeSlots = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '10:00', '10:30', '11:00', '11:30',
     '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+    '18:00', '18:30', '19:00', '19:30', '20:00', '20:30',
+    '21:00', '21:30',
 ];
 
 const bookingLocations = [
-    'Hotel Mulia Senayan, Ballroom 1',
-    'Sudirman Central Business District',
-    'Jakarta International School',
-    'Customer Venue',
+    'Jakarta',
+    'Bekasi',
 ];
 
-const features = [
-    'Free design frame',
-    'Gif share media',
-    'Photo share media',
-    'Physical photostrip (Tier B only)',
-    'Unlimited Print (Tier B only)',
-];
+const roomSizes = ['3 x 3 meter', '4 x 4 meter', '5 x 5 meter'];
 
-const today = new Date().toISOString().slice(0, 10);
+function computeMinBookingDate() {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return date.toISOString().slice(0, 10);
+}
+
+const minBookingDate = computeMinBookingDate();
 
 export default function UserBook() {
     const [searchParams] = useSearchParams();
+    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const bookingAvailability = window.__BOOKING_AVAILABILITY__ ?? {};
+    const unavailableDates = bookingAvailability.unavailable_dates ?? [];
     const initialSlug = packages[searchParams.get('package')] ? searchParams.get('package') : 'wedding';
     const initialOption = Number(searchParams.get('option')) || 0;
     const rescheduleId = searchParams.get('reschedule');
@@ -64,28 +106,29 @@ export default function UserBook() {
     const [selectedSlug, setSelectedSlug] = useState(initialSlug);
     const [selectedOption, setSelectedOption] = useState(initialOption);
     const [date, setDate] = useState(searchParams.get('date') ?? '');
-    const [people, setPeople] = useState(searchParams.get('people') ?? 1);
+    const [boothSize, setBoothSize] = useState(searchParams.get('booth_size') ?? roomSizes[0]);
     const [time, setTime] = useState(searchParams.get('time') ?? '');
     const [customerAddress, setCustomerAddress] = useState(searchParams.get('address') ?? '');
     const [bookingLocation, setBookingLocation] = useState(searchParams.get('location') ?? '');
 
     const selectedPackage = packages[selectedSlug];
     const option = selectedPackage.options[selectedOption] ?? selectedPackage.options[0];
-    const isComplete = Boolean(date && time && people && customerAddress.trim() && bookingLocation);
+    const isDateUnavailable = date ? unavailableDates.includes(date) : false;
+    const isComplete = Boolean(date && time && boothSize && customerAddress.trim() && bookingLocation && !isDateUnavailable);
 
     const paymentUrl = useMemo(() => {
         const params = new URLSearchParams({
             package: selectedSlug,
             option: String(selectedOption),
             date,
-            people: String(people),
+            booth_size: boothSize,
             time,
             address: customerAddress,
             location: bookingLocation,
         });
 
         return `/payment?${params.toString()}`;
-    }, [bookingLocation, customerAddress, date, people, selectedOption, selectedSlug, time]);
+    }, [bookingLocation, boothSize, customerAddress, date, selectedOption, selectedSlug, time]);
 
     function selectPackage(slug) {
         setSelectedSlug(slug);
@@ -164,7 +207,7 @@ export default function UserBook() {
                                 <i>{selectedOption === index ? '◉' : '○'}</i>
                             </button>
                             <ul>
-                                {features.map((feature) => <li key={feature}>✓ {feature}</li>)}
+                                {selectedPackage.features.map((feature) => <li key={feature}>✓ {feature}</li>)}
                             </ul>
                         </article>
                     ))}
@@ -174,29 +217,34 @@ export default function UserBook() {
             <section className="user-book-section">
                 <div className="section-title">
                     <h2>Select Date &amp; Time</h2>
-                    <p>Pick your preferred schedule</p>
+                    <p>Pick your preferred schedule &mdash; bookings need at least 1 day of preparation, so the earliest date is tomorrow</p>
                 </div>
 
                 <div className="book-form-grid">
                     <label className="book-input-card">
                         <span className="book-input-head"><i>▣</i><strong>Choose Date</strong></span>
                         <input
+                            aria-invalid={isDateUnavailable}
                             value={date}
-                            min={today}
+                            min={minBookingDate}
                             onChange={(event) => setDate(event.target.value)}
                             type="date"
                         />
                     </label>
                     <label className="book-input-card">
-                        <span className="book-input-head"><i>♙</i><strong>Number of Pax</strong></span>
-                        <input
-                            value={people}
-                            onChange={(event) => setPeople(event.target.value)}
-                            type="number"
-                            min="1"
-                        />
+                        <span className="book-input-head"><i>◇</i><strong>Room Size</strong></span>
+                        <select value={boothSize} onChange={(event) => setBoothSize(event.target.value)}>
+                            {roomSizes.map((size) => <option key={size} value={size}>{size}</option>)}
+                        </select>
                     </label>
                 </div>
+
+                {isDateUnavailable && (
+                    <section className="booking-date-warning">
+                        <strong>Tanggal ini sudah penuh</strong>
+                        <p>Eightfinity saat ini hanya menerima satu booking per hari. Pilih tanggal lain untuk melanjutkan.</p>
+                    </section>
+                )}
 
                 <div className="book-time-card">
                     <div className="book-input-head"><i>◷</i><strong>Choose Time Slot</strong></div>
@@ -223,7 +271,15 @@ export default function UserBook() {
                 </div>
 
                 <label className="book-location-card">
-                    <span className="book-input-head"><i>⌖</i><strong>Customer Address</strong></span>
+                    <span className="book-input-head">
+                        <i>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="7" />
+                                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                            </svg>
+                        </i>
+                        <strong>Booking Address</strong>
+                    </span>
                     <textarea
                         value={customerAddress}
                         onChange={(event) => setCustomerAddress(event.target.value)}
@@ -232,7 +288,15 @@ export default function UserBook() {
                 </label>
 
                 <label className="book-location-card">
-                    <span className="book-input-head"><i>▣</i><strong>Booking Location</strong></span>
+                    <span className="book-input-head">
+                        <i>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" />
+                                <circle cx="12" cy="9" r="2.5" />
+                            </svg>
+                        </i>
+                        <strong>Booking Location</strong>
+                    </span>
                     <select value={bookingLocation} onChange={(event) => setBookingLocation(event.target.value)}>
                         <option value="">Select Location</option>
                         {bookingLocations.map((location) => (
@@ -247,6 +311,13 @@ export default function UserBook() {
                     <span><small>Total</small><strong>{option.price}</strong></span>
                 </div>
 
+                {formErrors.length > 0 && (
+                    <section className="payment-error-card">
+                        <strong>Booking schedule could not be saved</strong>
+                        {formErrors.map((error) => <p key={error}>{error}</p>)}
+                    </section>
+                )}
+
                 {isReschedule ? (
                     <form className="reschedule-booking-form" method="POST" action={`/bookings/${rescheduleId}/reschedule`}>
                         <input type="hidden" name="_token" value={csrfToken} />
@@ -254,7 +325,7 @@ export default function UserBook() {
                         <input type="hidden" name="package" value={selectedSlug} />
                         <input type="hidden" name="option" value={selectedOption} />
                         <input type="hidden" name="date" value={date} />
-                        <input type="hidden" name="people" value={people} />
+                        <input type="hidden" name="booth_size" value={boothSize} />
                         <input type="hidden" name="time" value={time} />
                         <input type="hidden" name="address" value={customerAddress} />
                         <input type="hidden" name="location" value={bookingLocation} />
@@ -277,7 +348,7 @@ export default function UserBook() {
             </section>
 
             <footer className="user-book-footer">
-                <div><img src="/image/logo-icon.png" alt="" /><strong>EightFinity</strong></div>
+                <div><img src="/image/logo-icon-transparent.png" alt="" /><strong>EightFinity</strong></div>
                 <p>Capture Your Infinite Moments</p>
                 <small>© 2026 Eightfinity. All rights reserved.</small>
             </footer>

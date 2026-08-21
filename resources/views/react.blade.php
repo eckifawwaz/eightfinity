@@ -20,6 +20,11 @@
             window.__USER_PROFILE__ = @json($profile);
         </script>
     @endisset
+    @isset($bookingAvailability)
+        <script>
+            window.__BOOKING_AVAILABILITY__ = @json($bookingAvailability);
+        </script>
+    @endisset
     @isset($adminBookings)
         <script>
             window.__ADMIN_BOOKINGS__ = @json($adminBookings);
@@ -43,6 +48,21 @@
     @isset($adminLayout)
         <script>
             window.__ADMIN_LAYOUT__ = @json($adminLayout);
+        </script>
+    @endisset
+    @isset($adminRevenue)
+        <script>
+            window.__ADMIN_REVENUE__ = @json($adminRevenue);
+        </script>
+    @endisset
+    @isset($adminProfile)
+        <script>
+            window.__ADMIN_PROFILE__ = @json($adminProfile);
+        </script>
+    @endisset
+    @isset($adminTwoFactor)
+        <script>
+            window.__ADMIN_TWO_FACTOR__ = @json($adminTwoFactor);
         </script>
     @endisset
     @isset($verificationEmail)

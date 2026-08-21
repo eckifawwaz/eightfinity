@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { csrfToken } from '../../utils/csrf';
 
 function Icon({ children, size = 18 }) {
     return (
@@ -22,11 +23,35 @@ const navItems = [
     ['Manage Queue', '/admin/queue', 'M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 2.13a4 4 0 0 1 0 7.75'],
     ['Customer Data', '/admin/customers', 'M4 5c0-1.1 3.58-2 8-2s8 .9 8 2-3.58 2-8 2-8-.9-8-2Zm0 0v7c0 1.1 3.58 2 8 2s8-.9 8-2V5M4 12v7c0 1.1 3.58 2 8 2s8-.9 8-2v-7'],
     ['2D Layout View', '/admin/layout', 'M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Zm6-2.5v13.5M15 6.5V20'],
+    ['Revenue', '/admin/revenue', 'M4 20V10m6 10V4m6 16v-7m6 7V13'],
 ];
 
+const statusMessages = {
+    'admin-profile-updated': 'Account settings saved.',
+    'admin-password-updated': 'Password updated.',
+    'admin-two-factor-enabled': 'Two-factor authentication enabled.',
+    'admin-two-factor-disabled': 'Two-factor authentication disabled.',
+    'admin-notifications-updated': 'Notification preferences saved.',
+};
+
+function formatDate(value, fallback) {
+    if (!value) return fallback;
+
+    return new Intl.DateTimeFormat('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(new Date(value));
+}
+
 export default function AdminProfile() {
-    const [twoFactor, setTwoFactor] = useState(true);
-    const [desktopToasts, setDesktopToasts] = useState(true);
+    const profile = window.__ADMIN_PROFILE__ ?? {};
+    const admin = profile.user ?? {};
+    const preferences = profile.notification_preferences ?? {};
+    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [desktopToasts, setDesktopToasts] = useState(preferences.desktop_toasts ?? true);
+    const twoFactor = Boolean(admin.two_factor_enabled);
+    const nextTwoFactorValue = twoFactor ? '0' : '1';
 
     return (
         <main className="admin-dashboard-page admin-profile-page">
@@ -49,10 +74,10 @@ export default function AdminProfile() {
 
                 <div className="admin-sidebar-bottom">
                     <Link className="admin-user-card admin-user-card-active" to="/admin/profile">
-                        <span className="admin-avatar">A</span>
+                        <span className="admin-avatar">{admin.name?.charAt(0) ?? 'A'}</span>
                         <span>
-                            <strong>Admin User</strong>
-                            <small>admin@eightfinity.com</small>
+                            <strong>{admin.name ?? 'Admin User'}</strong>
+                            <small>{admin.email ?? 'admin@eightfinity.com'}</small>
                         </span>
                     </Link>
                     <a className="admin-signout" href="/admin/logout">
@@ -65,12 +90,22 @@ export default function AdminProfile() {
             <section className="admin-profile-content">
                 <header className="admin-profile-heading">
                     <div>
-                        <h1>Admin User</h1>
-                        <p>✉ admin@eightfinity.com</p>
-                        <small>Last login: 14 Oct 2023, 09:24 AM (GMT-5)</small>
+                        <h1>{admin.name ?? 'Admin User'}</h1>
+                        <p>✉ {admin.email ?? 'admin@eightfinity.com'}</p>
+                        <small>Last login: {formatDate(admin.last_login_at, 'Not recorded yet')}</small>
                     </div>
-                    <button type="button" className="admin-orange-button">Download Log</button>
+                    <a href="/admin/profile/log" className="admin-orange-button">Download Log</a>
                 </header>
+
+                {profile.status && statusMessages[profile.status] && (
+                    <section className="auth-status-card admin-profile-status">{statusMessages[profile.status]}</section>
+                )}
+                {formErrors.length > 0 && (
+                    <section className="auth-error-card admin-profile-status">
+                        <strong>Update could not be completed</strong>
+                        {formErrors.map((error) => <p key={error}>{error}</p>)}
+                    </section>
+                )}
 
                 <div className="admin-profile-grid">
                     <section className="admin-profile-card">
@@ -78,24 +113,27 @@ export default function AdminProfile() {
                             <Icon><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" /></Icon>
                             Account Settings
                         </h2>
-                        <form className="admin-settings-form" onSubmit={(event) => event.preventDefault()}>
+                        <form className="admin-settings-form" method="POST" action="/admin/profile">
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <input type="hidden" name="_method" value="PATCH" />
                             <label>
                                 Phone Number
                                 <span className="admin-input-icon">
                                     <Icon size={16}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92Z" /></Icon>
-                                    <input defaultValue="+1 (555) 902-3412" type="tel" />
+                                    <input defaultValue={admin.phone ?? ''} name="phone" placeholder="+62 812 3456 7890" type="tel" />
                                 </span>
                             </label>
                             <label>
                                 Timezone
-                                <select defaultValue="est">
-                                    <option value="est">Eastern Standard Time (GMT-5)</option>
-                                    <option value="wib">Western Indonesian Time (GMT+7)</option>
+                                <select defaultValue={admin.timezone ?? 'Asia/Jakarta'} name="timezone">
+                                    <option value="Asia/Jakarta">Western Indonesian Time (GMT+7)</option>
+                                    <option value="America/New_York">Eastern Standard Time (GMT-5)</option>
+                                    <option value="UTC">UTC</option>
                                 </select>
                             </label>
                             <label>
                                 Language
-                                <select defaultValue="en">
+                                <select defaultValue={admin.language ?? 'en'} name="language">
                                     <option value="en">English (United States)</option>
                                     <option value="id">Bahasa Indonesia</option>
                                 </select>
@@ -111,20 +149,47 @@ export default function AdminProfile() {
                         </h2>
                         <div className="admin-security-list">
                             <div className="admin-security-row">
-                                <span><strong>Password Management</strong><small>Last changed 3 months ago</small></span>
-                                <button type="button">Update</button>
+                                <span>
+                                    <strong>Password Management</strong>
+                                    <small>Last changed {formatDate(admin.password_changed_at, 'not recorded yet')}</small>
+                                </span>
+                                <button type="button" onClick={() => setShowPasswordForm((visible) => !visible)}>
+                                    {showPasswordForm ? 'Close' : 'Update'}
+                                </button>
                             </div>
-                            <div className="admin-security-row">
-                                <span><strong>Two-Factor Authentication</strong><small>Secure your account with SMS or App</small></span>
+                            {showPasswordForm && (
+                                <form method="POST" action="/admin/profile/password" className="admin-password-form">
+                                    <input type="hidden" name="_token" value={csrfToken} />
+                                    <input type="hidden" name="_method" value="PUT" />
+                                    <label>
+                                        Current Password
+                                        <input name="current_password" type="password" required />
+                                    </label>
+                                    <label>
+                                        New Password
+                                        <input name="password" type="password" required />
+                                    </label>
+                                    <label>
+                                        Confirm New Password
+                                        <input name="password_confirmation" type="password" required />
+                                    </label>
+                                    <button type="submit" className="admin-save-button">Update Password</button>
+                                </form>
+                            )}
+                            <form method="POST" action="/admin/profile/security" className="admin-security-row">
+                                <input type="hidden" name="_token" value={csrfToken} />
+                                <input type="hidden" name="_method" value="PATCH" />
+                                <span><strong>Two-Factor Authentication</strong><small>Secure your account with email OTP</small></span>
                                 <button
                                     aria-label="Toggle two-factor authentication"
                                     className={`admin-switch ${twoFactor ? 'active' : ''}`}
-                                    onClick={() => setTwoFactor((enabled) => !enabled)}
-                                    type="button"
+                                    name="two_factor_enabled"
+                                    type="submit"
+                                    value={nextTwoFactorValue}
                                 >
                                     <span />
                                 </button>
-                            </div>
+                            </form>
                             <div className="admin-connected-device">
                                 <strong>Connected Devices</strong>
                                 <p><span>▣ Chrome on MacOS</span><small>Active now</small></p>
@@ -133,7 +198,9 @@ export default function AdminProfile() {
                     </section>
                 </div>
 
-                <section className="admin-profile-card admin-notifications-card">
+                <form method="POST" action="/admin/profile/notifications" className="admin-profile-card admin-notifications-card admin-notification-form">
+                    <input type="hidden" name="_token" value={csrfToken} />
+                    <input type="hidden" name="_method" value="PATCH" />
                     <h2>
                         <Icon><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></Icon>
                         Notification Preferences
@@ -141,21 +208,21 @@ export default function AdminProfile() {
                     <div className="admin-notification-grid">
                         <fieldset>
                             <legend>Email Reports</legend>
-                            <label><input defaultChecked type="checkbox" /> Daily Summary</label>
-                            <label><input type="checkbox" /> New Customer Alerts</label>
-                            <label><input defaultChecked type="checkbox" /> System Updates</label>
+                            <label><input defaultChecked={preferences.daily_summary ?? true} name="daily_summary" type="checkbox" value="1" /> Daily Summary</label>
+                            <label><input defaultChecked={preferences.new_customer_alerts ?? false} name="new_customer_alerts" type="checkbox" value="1" /> New Customer Alerts</label>
+                            <label><input defaultChecked={preferences.system_updates ?? true} name="system_updates" type="checkbox" value="1" /> System Updates</label>
                         </fieldset>
                         <fieldset>
                             <legend>Push Notifications</legend>
-                            <label><input defaultChecked type="checkbox" /> Booking Requests</label>
-                            <label><input defaultChecked type="checkbox" /> Low Stock Alerts</label>
-                            <label><input type="checkbox" /> Message Activity</label>
+                            <label><input defaultChecked={preferences.booking_requests ?? true} name="booking_requests" type="checkbox" value="1" /> Booking Requests</label>
+                            <label><input defaultChecked={preferences.low_stock_alerts ?? true} name="low_stock_alerts" type="checkbox" value="1" /> Low Stock Alerts</label>
+                            <label><input defaultChecked={preferences.message_activity ?? false} name="message_activity" type="checkbox" value="1" /> Message Activity</label>
                         </fieldset>
                         <fieldset>
                             <legend>Visual &amp; Audio</legend>
                             <label className="admin-sound-label">
                                 Alert Sound
-                                <select defaultValue="corporate">
+                                <select defaultValue={preferences.alert_sound ?? 'corporate'} name="alert_sound">
                                     <option value="corporate">Corporate Minimal</option>
                                     <option value="soft">Soft Chime</option>
                                     <option value="none">No Sound</option>
@@ -165,13 +232,16 @@ export default function AdminProfile() {
                                 Desktop Toasts
                                 <input
                                     checked={desktopToasts}
+                                    name="desktop_toasts"
                                     onChange={(event) => setDesktopToasts(event.target.checked)}
                                     type="checkbox"
+                                    value="1"
                                 />
                             </label>
                         </fieldset>
                     </div>
-                </section>
+                    <button type="submit" className="admin-save-button admin-notification-save">Save Preferences</button>
+                </form>
 
                 <section className="admin-account-danger">
                     <div>

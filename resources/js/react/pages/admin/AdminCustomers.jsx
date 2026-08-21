@@ -31,6 +31,9 @@ export default function AdminCustomers() {
     const summary = customerData.summary ?? {};
 
     const filteredCustomers = useMemo(() => {
+
+
+        
         const normalizedQuery = query.trim().toLowerCase();
 
         return customers.filter((customer) => {
@@ -62,6 +65,7 @@ export default function AdminCustomers() {
                         <a href="/admin/queue"><span>◌</span>Manage Queue</a>
                         <a href="/admin/customers" className="active"><span>▤</span>Customer Data</a>
                         <a href="/admin/layout"><span>◇</span>2D Layout View</a>
+                        <a href="/admin/revenue"><span>◆</span>Revenue</a>
                     </nav>
                 </div>
 

@@ -1,30 +1,83 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import SocialLinks from '../../components/SocialLinks';
+
+const bookingGuideSteps = [
+    {
+        title: '1. Pilih Paket',
+        description: 'Lihat detail Wedding, Reservation, atau Unlimited Package, lalu pilih yang paling cocok dengan acaramu.',
+    },
+    {
+        title: '2. Tentukan Durasi & Jadwal',
+        description: 'Pilih durasi sesi, tanggal, dan jam booking yang masih tersedia.',
+    },
+    {
+        title: '3. Isi Lokasi Booking',
+        description: 'Masukkan alamat lengkap venue dan pilih kota lokasi acara.',
+    },
+    {
+        title: '4. Selesaikan Pembayaran',
+        description: 'Bayar via QRIS/e-wallet, lalu tunggu konfirmasi dari admin sebelum hari-H.',
+    },
+];
 
 const packages = [
     {
         name: 'WEDDING PACKAGE',
         slug: 'wedding',
-        price: 'Starting from Rp 1,400,000',
-        image: '/image/user-dashboard/package-wedding.png',
+        image: '/image/user-dashboard/package-wedding-v2.png',
     },
     {
         name: 'RESERVATION PACKAGE',
         slug: 'reservation',
-        price: 'Starting from Rp 1,400,000',
         image: '/image/user-dashboard/package-reservation.png',
     },
     {
         name: 'UNLIMITED PACKAGE',
         slug: 'unlimited',
-        price: 'Starting from Rp 1,400,000',
         image: '/image/user-dashboard/package-unlimited.png',
     },
 ];
 
 export default function UserHome() {
+    const [showGuide, setShowGuide] = useState(false);
+
+    useEffect(() => {
+        const seen = window.localStorage.getItem('eightfinity-booking-guide-seen');
+        if (!seen) {
+            setShowGuide(true);
+        }
+    }, []);
+
+    function closeGuide() {
+        window.localStorage.setItem('eightfinity-booking-guide-seen', '1');
+        setShowGuide(false);
+    }
+
     return (
         <main className="customer-dashboard">
+            {showGuide && (
+                <div className="user-logout-overlay" role="dialog" aria-modal="true">
+                    <div className="booking-guide-modal">
+                        <header>
+                            <h2>Cara Booking di Eightfinity</h2>
+                            <button type="button" onClick={closeGuide} aria-label="Tutup panduan">×</button>
+                        </header>
+                        <ol className="booking-guide-steps">
+                            {bookingGuideSteps.map((step) => (
+                                <li key={step.title}>
+                                    <strong>{step.title}</strong>
+                                    <p>{step.description}</p>
+                                </li>
+                            ))}
+                        </ol>
+                        <button type="button" className="booking-guide-cta" onClick={closeGuide}>
+                            Mengerti, Mulai Booking
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <header className="customer-nav">
                 <Link to="/home" className="customer-brand">
                     <img src="/image/logo-icon.png" alt="EightFinity" />
@@ -46,8 +99,6 @@ export default function UserHome() {
                     <p>Professional photo booth experience with instant digital delivery. Book your session in seconds!</p>
                     <div className="customer-hero-actions">
                         <Link to="/book">Get Started <b>→</b></Link>
-                        <span><strong>15min</strong><small>Quick Sessions</small></span>
-                        <span><strong>24/7</strong><small>Online Booking</small></span>
                     </div>
                 </div>
                 <img src="/image/user-dashboard/hero-photobooth.png" alt="Friends enjoying an EightFinity photo booth" />
@@ -90,7 +141,6 @@ export default function UserHome() {
                             <img src={item.image} alt={item.name} />
                             <section>
                                 <h3>{item.name}</h3>
-                                <strong>{item.price}</strong>
                                 <Link to={`/packages/${item.slug}`}>View Details</Link>
                             </section>
                         </article>
@@ -100,11 +150,11 @@ export default function UserHome() {
 
             <footer className="customer-footer">
                 <div className="customer-brand">
-                    <img src="/image/logo-icon.png" alt="" />
+                    <img src="/image/logo-icon-transparent.png" alt="" />
                     <strong>EightFinity</strong>
                 </div>
                 <p>Capture Your Infinite Moments</p>
-                <div className="customer-socials"><span>◉ WhatsApp</span><span>▣ Instagram</span></div>
+                <SocialLinks className="customer-socials" />
                 <small>© 2026 Eightfinity. All rights reserved.</small>
             </footer>
         </main>

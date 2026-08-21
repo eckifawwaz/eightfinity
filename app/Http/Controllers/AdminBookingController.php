@@ -23,7 +23,7 @@ class AdminBookingController extends Controller
                 'package_option' => $booking->package_option,
                 'booking_date' => $booking->booking_date,
                 'booking_time' => $booking->booking_time,
-                'people' => $booking->people,
+                'booth_size' => $booking->booth_size ?? '3 x 3 meter',
                 'customer_address' => $booking->customer_address,
                 'booking_location' => $booking->booking_location,
                 'amount' => $booking->amount,
@@ -48,5 +48,12 @@ class AdminBookingController extends Controller
         ]);
 
         return back()->with('status', 'booking-updated');
+    }
+
+    public function destroy(Booking $booking): RedirectResponse
+    {
+        $booking->delete();
+
+        return redirect()->route('admin.bookings')->with('status', 'booking-deleted');
     }
 }

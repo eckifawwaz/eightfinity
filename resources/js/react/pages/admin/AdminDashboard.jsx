@@ -19,10 +19,10 @@ export default function AdminDashboard() {
     const bookings = dashboard.recent_bookings ?? [];
     const packages = dashboard.package_stats ?? [];
     const metrics = [
-        { label: "Today's Bookings", value: metricsData.bookings_today ?? 0, icon: '▣', color: 'terracotta' },
-        { label: 'Active Sessions', value: metricsData.active_sessions ?? 0, icon: '♙', color: 'gold' },
-        { label: 'Queue Length', value: metricsData.queue_length ?? 0, icon: '◷', color: 'green' },
-        { label: 'Revenue Today', value: compactCurrency(metricsData.revenue_today ?? 0), icon: '$', color: 'pink' },
+        { label: "This Month's Bookings", value: metricsData.bookings_this_month ?? 0, icon: '📅', color: 'terracotta' },
+        { label: 'Waiting Confirmation', value: metricsData.waiting_confirmation ?? 0, icon: '⏳', color: 'gold' },
+        { label: 'Upcoming Event', value: metricsData.upcoming_events ?? 0, icon: '🔜', color: 'green' },
+        { label: 'Revenue This Month', value: compactCurrency(metricsData.revenue_this_month ?? 0), icon: '💰', color: 'pink' },
     ];
 
     return (
@@ -37,9 +37,10 @@ export default function AdminDashboard() {
                     <nav className="admin-nav">
                         <a href="/dashboard" className="active"><span>▦</span>Dashboard</a>
                         <a href="/admin/bookings"><span>▣</span>Manage Bookings</a>
-                        <a href="/admin/queue"><span>♙</span>Manage Queue</a>
+                        <a href="/admin/queue"><span>◌</span>Manage Queue</a>
                         <a href="/admin/customers"><span>▤</span>Customer Data</a>
                         <a href="/admin/layout"><span>♢</span>2D Layout View</a>
+                        <a href="/admin/revenue"><span>◆</span>Revenue</a>
                     </nav>
                 </div>
 

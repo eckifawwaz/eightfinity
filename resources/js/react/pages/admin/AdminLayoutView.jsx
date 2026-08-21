@@ -1,29 +1,105 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { csrfToken } from '../../utils/csrf';
-
-const flowSteps = [
-    ['1', 'Check-In', 'Verify booking'],
-    ['2', 'Wait', 'Queue area'],
-    ['3', 'Enter Booth', 'Start session'],
-    ['4', 'Take Photos', 'Capture moments'],
-    ['5', 'Print Photos', 'Get prints'],
-    ['6', 'Finished', 'Exit & enjoy'],
-];
+import { flowSteps } from '../../utils/experienceFlow';
 
 const layoutOptions = ['Wedding Setup', 'Corporate Event', 'Birthday Party', 'Graduation Setup', 'Custom Client Setup'];
 const boothSizes = ['3 x 3 meter', '4 x 4 meter', '5 x 5 meter'];
 const defaultPositions = {
-    camera: { x: 58, y: 28 },
-    props: { x: 60, y: 55 },
-    printer: { x: 18, y: 66 },
+    camera: { x: 55, y: 27 },
+    props: { x: 70, y: 55 },
+    printer: { x: 48, y: 55 },
+    exit: { x: 83, y: 14 },
+    enter: { x: 45, y: 82 },
 };
+const outsidePrinterPosition = { x: 11, y: 69 };
 
-function normalizePositions(positions) {
+function normalizePositions(positions, printerPosition = 'inside') {
     return {
         camera: { ...defaultPositions.camera, ...(positions?.camera ?? {}) },
         props: { ...defaultPositions.props, ...(positions?.props ?? {}) },
-        printer: { ...defaultPositions.printer, ...(positions?.printer ?? {}) },
+        printer: {
+            ...(printerPosition === 'outside' ? outsidePrinterPosition : defaultPositions.printer),
+            ...(positions?.printer ?? {}),
+        },
+        exit: { ...defaultPositions.exit, ...(positions?.exit ?? {}) },
+        enter: { ...defaultPositions.enter, ...(positions?.enter ?? {}) },
     };
+}
+
+function LayoutIcon({ name, className = 'layout-icon' }) {
+    const paths = {
+        booth: (
+            <>
+                <path d="M5 8.5 12 5l7 3.5v8L12 20l-7-3.5z" />
+                <path d="M5 8.5 12 12l7-3.5" />
+                <path d="M12 12v8" />
+            </>
+        ),
+        camera: (
+            <>
+                <path d="M7.5 8.5h2L11 6.5h2l1.5 2h2a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-5.5a2 2 0 0 1 2-2z" />
+                <circle cx="12" cy="13.2" r="3" />
+            </>
+        ),
+        checkin: (
+            <>
+                <path d="M7.5 4.8h9a1.8 1.8 0 0 1 1.8 1.8v10.8a1.8 1.8 0 0 1-1.8 1.8h-9a1.8 1.8 0 0 1-1.8-1.8V6.6a1.8 1.8 0 0 1 1.8-1.8z" />
+                <path d="M9 8h2v2H9zM13 8h2v2h-2zM9 12h2v2H9zM13 12h2v2h-2z" />
+            </>
+        ),
+        enter: (
+            <>
+                <path d="M12 19V6" />
+                <path d="m7.5 10.5 4.5-4.5 4.5 4.5" />
+            </>
+        ),
+        exit: (
+            <>
+                <path d="M5 12h12" />
+                <path d="m13 7 5 5-5 5" />
+            </>
+        ),
+        finished: (
+            <>
+                <circle cx="9" cy="8" r="2.5" />
+                <circle cx="15" cy="8" r="2.5" />
+                <path d="M4.5 18c.6-3.1 2.2-4.7 4.5-4.7 1.3 0 2.3.4 3 1.2.7-.8 1.7-1.2 3-1.2 2.3 0 3.9 1.6 4.5 4.7" />
+            </>
+        ),
+        printer: (
+            <>
+                <path d="M8 8V5.5h8V8" />
+                <path d="M7 16H5.8a1.8 1.8 0 0 1-1.8-1.8v-3.4A1.8 1.8 0 0 1 5.8 9h12.4a1.8 1.8 0 0 1 1.8 1.8v3.4a1.8 1.8 0 0 1-1.8 1.8H17" />
+                <path d="M7 13.5h10v5H7z" />
+            </>
+        ),
+        props: (
+            <>
+                <path d="M7 5h10v14H7z" />
+                <path d="M10 5v14M14 5v14M7 9h10M7 13h10" />
+            </>
+        ),
+        user: (
+            <>
+                <circle cx="12" cy="9" r="3" />
+                <path d="M6.5 18.5c.8-3.1 2.6-4.7 5.5-4.7s4.7 1.6 5.5 4.7" />
+            </>
+        ),
+        wait: (
+            <>
+                <circle cx="12" cy="12" r="7.5" />
+                <path d="M12 7.8V12l3 2" />
+            </>
+        ),
+    };
+
+    return (
+        <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24">
+            <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8">
+                {paths[name]}
+            </g>
+        </svg>
+    );
 }
 
 function DraggableLayoutItem({ children, id, onMove, position, variant = '' }) {
@@ -77,20 +153,23 @@ export default function AdminLayoutView() {
         () => bookings.find((booking) => String(booking.id) === selectedBookingId) ?? bookings[0],
         [bookings, selectedBookingId],
     );
+    const initialPrinterPosition = selectedBooking?.printer_position ?? 'inside';
     const [layoutName, setLayoutName] = useState(selectedBooking?.layout_name ?? 'Wedding Setup');
     const [boothSize, setBoothSize] = useState(selectedBooking?.booth_size ?? '3 x 3 meter');
-    const [printerPosition, setPrinterPosition] = useState(selectedBooking?.printer_position ?? 'inside');
-    const [entranceDirection, setEntranceDirection] = useState(selectedBooking?.entrance_direction ?? 'left');
-    const [positions, setPositions] = useState(normalizePositions(selectedBooking?.layout_positions));
+    const [printerPosition, setPrinterPosition] = useState(initialPrinterPosition);
+    const [positions, setPositions] = useState(
+        normalizePositions(selectedBooking?.layout_positions, initialPrinterPosition),
+    );
 
     useEffect(() => {
         if (!selectedBooking) return;
 
+        const nextPrinterPosition = selectedBooking.printer_position ?? 'inside';
+
         setLayoutName(selectedBooking.layout_name ?? 'Wedding Setup');
         setBoothSize(selectedBooking.booth_size ?? '3 x 3 meter');
-        setPrinterPosition(selectedBooking.printer_position ?? 'inside');
-        setEntranceDirection(selectedBooking.entrance_direction ?? 'left');
-        setPositions(normalizePositions(selectedBooking.layout_positions));
+        setPrinterPosition(nextPrinterPosition);
+        setPositions(normalizePositions(selectedBooking.layout_positions, nextPrinterPosition));
     }, [selectedBooking]);
 
     function moveLayoutItem(id, position) {
@@ -100,8 +179,18 @@ export default function AdminLayoutView() {
         }));
     }
 
-    function resetPositions() {
-        setPositions(normalizePositions());
+    function choosePrinterPosition(nextPrinterPosition) {
+        setPrinterPosition(nextPrinterPosition);
+        setPositions((current) => ({
+            ...current,
+            printer: nextPrinterPosition === 'outside' ? outsidePrinterPosition : defaultPositions.printer,
+        }));
+    }
+
+    function submitLayout(event) {
+        if (!selectedBooking) {
+            event.preventDefault();
+        }
     }
 
     const roomClass = [
@@ -112,7 +201,7 @@ export default function AdminLayoutView() {
     ].filter(Boolean).join(' ');
 
     return (
-        <div className="admin-dashboard-page">
+        <div className="admin-dashboard-page admin-layout-page">
             <aside className="admin-sidebar">
                 <div>
                     <div className="admin-brand">
@@ -126,6 +215,7 @@ export default function AdminLayoutView() {
                         <a href="/admin/queue"><span>◌</span>Manage Queue</a>
                         <a href="/admin/customers"><span>▤</span>Customer Data</a>
                         <a href="/admin/layout" className="active"><span>◇</span>2D Layout View</a>
+                        <a href="/admin/revenue"><span>◆</span>Revenue</a>
                     </nav>
                 </div>
 
@@ -144,55 +234,60 @@ export default function AdminLayoutView() {
             <main className="admin-content admin-layout-content">
                 <section className="admin-overview-card">
                     <h1>Preview Layout Booth</h1>
-                    <p>Design booth setup per customer booking</p>
+                    <p>Simulate your photo booth setup and flow</p>
                 </section>
 
                 <section className="layout-main-grid">
                     <article className="layout-preview-card">
                         <div className="layout-card-title">
-                            <div>
-                                <h2>Booth Layout Preview</h2>
-                                <p>{selectedBooking ? `${selectedBooking.customer_name} • #${selectedBooking.booking_code}` : 'No active booking selected'}</p>
-                            </div>
-                            {selectedBooking && <a href="/admin/queue">Back to Queue</a>}
+                            <h2>Booth Layout Preview</h2>
                         </div>
 
-                        <div className={`booth-canvas entrance-${entranceDirection}`}>
+                        <div className="booth-canvas">
                             <div className="waiting-area">
                                 <strong>Waiting Area</strong>
                                 <div>
-                                    <span>1</span>
-                                    <span>2</span>
+                                    <span><LayoutIcon name="user" /></span>
+                                    <span><LayoutIcon name="user" /></span>
                                 </div>
                             </div>
 
                             <div className={roomClass}>
-                                <header>{layoutName}</header>
+                                <header>Backdrop</header>
                             </div>
 
                             <DraggableLayoutItem id="camera" onMove={moveLayoutItem} position={positions.camera} variant="camera-drag">
-                                ▣<small>Camera</small>
+                                <LayoutIcon name="camera" className="drag-icon" />
+                                <small>Camera</small>
                             </DraggableLayoutItem>
                             <DraggableLayoutItem id="props" onMove={moveLayoutItem} position={positions.props} variant="props-drag">
-                                ▦<small>Props</small>
+                                <LayoutIcon name="props" className="drag-icon" />
+                                <small>Props</small>
                             </DraggableLayoutItem>
                             <DraggableLayoutItem id="printer" onMove={moveLayoutItem} position={positions.printer} variant="printer-drag">
-                                ▤<small>Printer</small>
+                                <LayoutIcon name="printer" className="drag-icon" />
+                                <small>Printer</small>
                             </DraggableLayoutItem>
 
-                            <div className="exit-marker">➜<small>Exit</small></div>
-                            <div className="enter-marker">{entranceDirection === 'left' ? '↑' : '↱'}<small>Enter</small></div>
+                            <DraggableLayoutItem id="exit" onMove={moveLayoutItem} position={positions.exit} variant="marker-drag exit-drag">
+                                <span className="marker-circle"><LayoutIcon name="exit" /></span>
+                                <small>Exit</small>
+                            </DraggableLayoutItem>
+                            <DraggableLayoutItem id="enter" onMove={moveLayoutItem} position={positions.enter} variant="marker-drag enter-drag">
+                                <span className="marker-circle"><LayoutIcon name="enter" /></span>
+                                <small>Enter</small>
+                            </DraggableLayoutItem>
                         </div>
                     </article>
 
                     <article className="booth-config-card">
                         <h2>Booth Configuration</h2>
-                        {bookings.length ? (
-                            <form method="POST" action={`/admin/layout/${selectedBooking?.id}`}>
-                                <input type="hidden" name="_token" value={csrfToken} />
-                                <input type="hidden" name="_method" value="PATCH" />
-                                <input type="hidden" name="layout_positions" value={JSON.stringify(positions)} />
+                        <form method="POST" action={selectedBooking ? `/admin/layout/${selectedBooking.id}` : '/admin/layout'} onSubmit={submitLayout}>
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <input type="hidden" name="_method" value="PATCH" />
+                            <input type="hidden" name="layout_positions" value={JSON.stringify(positions)} />
 
+                            {bookings.length > 1 && (
                                 <label>
                                     Customer Booking:
                                     <select value={selectedBookingId} onChange={(event) => setSelectedBookingId(event.target.value)}>
@@ -203,45 +298,31 @@ export default function AdminLayoutView() {
                                         ))}
                                     </select>
                                 </label>
-                                <label>
-                                    Select Layout:
-                                    <select name="layout_name" value={layoutName} onChange={(event) => setLayoutName(event.target.value)}>
-                                        {layoutOptions.map((option) => <option key={option}>{option}</option>)}
-                                    </select>
-                                </label>
-                                <label>
-                                    Booth Size:
-                                    <select name="booth_size" value={boothSize} onChange={(event) => setBoothSize(event.target.value)}>
-                                        {boothSizes.map((option) => <option key={option}>{option}</option>)}
-                                    </select>
-                                </label>
-                                <div>
-                                    <strong>Printer Position:</strong>
-                                    <input type="hidden" name="printer_position" value={printerPosition} />
-                                    <div className="config-toggle">
-                                        <button type="button" className={printerPosition === 'inside' ? 'active' : ''} onClick={() => setPrinterPosition('inside')}>Inside</button>
-                                        <button type="button" className={printerPosition === 'outside' ? 'active' : ''} onClick={() => setPrinterPosition('outside')}>Outside</button>
-                                    </div>
+                            )}
+                            <label>
+                                Select Layout:
+                                <select name="layout_name" value={layoutName} onChange={(event) => setLayoutName(event.target.value)}>
+                                    {layoutOptions.map((option) => <option key={option}>{option}</option>)}
+                                </select>
+                            </label>
+                            <label>
+                                Booth Size:
+                                <select name="booth_size" value={boothSize} onChange={(event) => setBoothSize(event.target.value)}>
+                                    {boothSizes.map((option) => <option key={option}>{option}</option>)}
+                                </select>
+                            </label>
+                            <div>
+                                <strong>Printer Position:</strong>
+                                <input type="hidden" name="printer_position" value={printerPosition} />
+                                <div className="config-toggle">
+                                    <button type="button" className={printerPosition === 'inside' ? 'active' : ''} onClick={() => choosePrinterPosition('inside')}>Inside</button>
+                                    <button type="button" className={printerPosition === 'outside' ? 'active' : ''} onClick={() => choosePrinterPosition('outside')}>Outside</button>
                                 </div>
-                                <div>
-                                    <strong>Entrance Direction:</strong>
-                                    <input type="hidden" name="entrance_direction" value={entranceDirection} />
-                                    <div className="config-toggle">
-                                        <button type="button" className={entranceDirection === 'left' ? 'active' : ''} onClick={() => setEntranceDirection('left')}>Left</button>
-                                        <button type="button" className={entranceDirection === 'right' ? 'active' : ''} onClick={() => setEntranceDirection('right')}>Right</button>
-                                    </div>
-                                </div>
-                                <button type="button" className="reset-layout" onClick={resetPositions}>
-                                    Reset Item Positions
-                                </button>
-                                <button type="submit" className="confirm-setup">Confirm Setup</button>
-                            </form>
-                        ) : (
-                            <div className="layout-empty-state">
-                                <strong>No queue bookings</strong>
-                                <p>Pending or confirmed bookings will appear here.</p>
-                                <a href="/admin/bookings">Open Manage Bookings</a>
                             </div>
+                            <button type="submit" className="confirm-setup" disabled={!selectedBooking}>Confirm Setup</button>
+                        </form>
+                        {!selectedBooking && (
+                            <p className="layout-config-note">Queue bookings are required before this setup can be saved.</p>
                         )}
                     </article>
                 </section>
@@ -250,9 +331,10 @@ export default function AdminLayoutView() {
                     <h2>Experience Flow</h2>
                     <p>Your photo booth journey steps</p>
                     <div className="flow-steps">
-                        {flowSteps.map(([number, title, subtitle]) => (
+                        {flowSteps.map(([number, image, title, subtitle]) => (
                             <article key={number} className="flow-step">
                                 <span className={`flow-number step-${number}`}>{number}</span>
+                                <img className="flow-step-image" src={image} alt="" />
                                 <strong>{title}</strong>
                                 <small>{subtitle}</small>
                             </article>

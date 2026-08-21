@@ -16,6 +16,8 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminLogout from './pages/admin/AdminLogout';
 import AdminProfile from './pages/admin/AdminProfile';
 import AdminQueue from './pages/admin/AdminQueue';
+import AdminRevenue from './pages/admin/AdminRevenue';
+import AdminTwoFactor from './pages/admin/AdminTwoFactor';
 import UserBook from './pages/user/UserBook';
 import UserHome from './pages/user/UserHome';
 import UserPackageDetail from './pages/user/UserPackageDetail';
@@ -66,11 +68,13 @@ function App() {
                 <Route path="/payment/success/:booking" element={<UserPaymentSuccess />} />
                 <Route path="/profile" element={<UserProfile />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/two-factor" element={<AdminTwoFactor />} />
                 <Route path="/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/bookings" element={<AdminBookings />} />
                 <Route path="/admin/queue" element={<AdminQueue />} />
                 <Route path="/admin/customers" element={<AdminCustomers />} />
                 <Route path="/admin/layout" element={<AdminLayoutView />} />
+                <Route path="/admin/revenue" element={<AdminRevenue />} />
                 <Route path="/admin/logout" element={<AdminLogout />} />
                 <Route path="/admin/profile" element={<AdminProfile />} />
             </Routes>

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Booking extends Model
 {
@@ -31,16 +32,45 @@ class Booking extends Model
         'payment_provider',
         'payment_proof',
         'status',
+        'midtrans_order_id',
+        'midtrans_snap_token',
+        'midtrans_redirect_url',
+        'midtrans_transaction_id',
+        'midtrans_payment_type',
+        'midtrans_status',
+        'photos_taken',
+        'booth_paused',
+        'equipment_status',
     ];
 
     protected $casts = [
         'booking_date' => 'date',
         'amount' => 'integer',
         'layout_positions' => 'array',
+        'photos_taken' => 'integer',
+        'booth_paused' => 'boolean',
+        'equipment_status' => 'array',
     ];
+
+    public const DEFAULT_EQUIPMENT_STATUS = [
+        'camera' => true,
+        'printer' => true,
+        'lighting' => true,
+        'backdrop' => true,
+    ];
+
+    public function equipmentStatus(): array
+    {
+        return array_merge(self::DEFAULT_EQUIPMENT_STATUS, $this->equipment_status ?? []);
+    }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function queueGuests(): HasMany
+    {
+        return $this->hasMany(QueueGuest::class)->orderBy('queue_order');
     }
 }

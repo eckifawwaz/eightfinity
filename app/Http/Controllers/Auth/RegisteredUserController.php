@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\EmailVerificationCodeMail;
 use App\Models\User;
+use App\Support\AdminNotifier;
 use App\Support\PortalUrl;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -72,6 +73,14 @@ class RegisteredUserController extends Controller
 
         $code = $user->generateEmailVerificationCode();
         Mail::to($user)->send(new EmailVerificationCodeMail($user, $code));
+
+        app(AdminNotifier::class)->system(
+            'new_customer_alerts',
+            'New Eightfinity customer registered',
+            "{$user->name} registered a new customer account.",
+            PortalUrl::to('admin', '/admin/customers'),
+            'Open Customer Data',
+        );
 
         Auth::login($user);
 

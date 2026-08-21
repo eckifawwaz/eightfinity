@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
 
@@ -8,6 +8,8 @@ export default function UserResetPassword() {
     const formErrors = window.__FORM_ERRORS__ ?? [];
     const resetToken = window.__RESET_TOKEN__ ?? token ?? '';
     const resetEmail = window.__RESET_EMAIL__ ?? searchParams.get('email') ?? '';
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
 
     return (
         <main className="user-auth-page user-login-page">
@@ -30,8 +32,51 @@ export default function UserResetPassword() {
                         </section>
                     )}
                     <label>Email Address<input type="email" name="email" defaultValue={resetEmail} placeholder="you@example.com" required /></label>
-                    <label>Password<input type="password" name="password" placeholder="At least 8 characters" minLength="8" required /></label>
-                    <label>Confirm Password<input type="password" name="password_confirmation" placeholder="Repeat your password" minLength="8" required /></label>
+                    <label>
+                        Password
+                        <span className="password-field">
+                            <input
+                                minLength="8"
+                                name="password"
+                                pattern="(?=.*[A-Z])(?=.*\d).{8,}"
+                                placeholder="At least 8 characters"
+                                required
+                                title="Use at least 8 characters, 1 uppercase letter, and 1 number"
+                                type={showPassword ? 'text' : 'password'}
+                            />
+                            <button
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                                type="button"
+                            >
+                                ◎
+                            </button>
+                        </span>
+                        <small>Use 8+ characters with at least 1 uppercase letter and 1 number</small>
+                    </label>
+                    <label>
+                        Confirm Password
+                        <span className="password-field">
+                            <input
+                                minLength="8"
+                                name="password_confirmation"
+                                pattern="(?=.*[A-Z])(?=.*\d).{8,}"
+                                placeholder="Repeat your password"
+                                required
+                                title="Use at least 8 characters, 1 uppercase letter, and 1 number"
+                                type={showPasswordConfirmation ? 'text' : 'password'}
+                            />
+                            <button
+                                aria-label={showPasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}
+                                className="password-toggle"
+                                onClick={() => setShowPasswordConfirmation(!showPasswordConfirmation)}
+                                type="button"
+                            >
+                                ◎
+                            </button>
+                        </span>
+                    </label>
                     <button type="submit" className="primary-button">Reset Password</button>
                 </form>
 

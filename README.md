@@ -180,18 +180,11 @@ Catatan: sebagian test bawaan Laravel Breeze lama mungkin perlu disesuaikan deng
 Di server production:
 
 ```bash
-composer install --no-dev --optimize-autoloader
-npm install
-npm run build
 cp .env.example .env
 php artisan key:generate
-php artisan migrate --force
-php artisan db:seed --force
-php artisan storage:link
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
 ```
+
+Jangan upload atau menyalin `.env` lokal ke server production. File `.env` lokal berisi kredensial development dan sudah masuk `.gitignore`, jadi production harus dibuat dari `.env.example`, lalu diisi ulang di server.
 
 Sesuaikan `.env` production:
 
@@ -206,6 +199,14 @@ ADMIN_SEED_NAME="EightFinity Admin"
 ADMIN_SEED_EMAIL=admin@your-domain.com
 ADMIN_SEED_PASSWORD=your-secure-admin-password
 ADMIN_SEED_PHONE=+6280000000000
+
+MIDTRANS_WEDDING_4_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_WEDDING_8_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_RESERVATION_4_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_RESERVATION_4_PLUS_1_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_UNLIMITED_2_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_UNLIMITED_3_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_UNLIMITED_4_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
 
 DB_CONNECTION=mysql
 DB_HOST=your-database-host
@@ -222,9 +223,29 @@ MAIL_PASSWORD=your-smtp-password
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=no-reply@your-domain.com
 MAIL_FROM_NAME="${APP_NAME}"
+
+VITE_WHATSAPP_URL=https://wa.me/6285860581496
+VITE_INSTAGRAM_URL=https://www.instagram.com/___eightfinity
 ```
 
-Jangan gunakan password placeholder di production. Isi `ADMIN_SEED_PASSWORD` dengan password admin yang kuat sebelum menjalankan `php artisan db:seed --force`.
+Sebelum deploy, rotate dan isi ulang secret berikut di server production:
+
+- `APP_KEY`: generate baru dengan `php artisan key:generate`.
+- `ADMIN_SEED_PASSWORD`: gunakan password kuat, jangan pakai password lokal.
+- `DB_PASSWORD`: gunakan user database production dengan akses terbatas ke database Eightfinity.
+- `MAIL_PASSWORD`: buat app password baru khusus production.
+- `MIDTRANS_*_PAYMENT_LINK`: gunakan payment link production, bukan sandbox/local test link.
+- `VITE_WHATSAPP_URL` dan `VITE_INSTAGRAM_URL`: isi dengan akun bisnis yang akan dibuka dari footer website.
+
+Jangan gunakan password placeholder di production. Isi `ADMIN_SEED_EMAIL` dan `ADMIN_SEED_PASSWORD` sebelum menjalankan `php artisan db:seed --force`.
+
+Setelah `.env` production sudah benar, jalankan deploy script:
+
+```bash
+./scripts/deploy-production.sh
+```
+
+Script ini menjalankan dependency install, frontend build, `migrate --force`, `db:seed --force`, `storage:link`, dan cache Laravel. Script akan berhenti jika `.env` belum ada atau masih memakai `APP_ENV=local/testing`.
 
 Pastikan folder berikut writable oleh web server:
 
