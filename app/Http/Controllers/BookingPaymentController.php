@@ -9,6 +9,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
@@ -296,14 +297,24 @@ class BookingPaymentController extends Controller
     public function cancel(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
+        abort_if(in_array($booking->status, ['completed', 'cancelled'], true), 422, 'This booking cannot be cancelled.');
+        abort_unless($this->isWithinModifiableWindow($booking), 422, 'Bookings can only be cancelled up to 3 days before the event.');
 
-        if (! in_array($booking->status, ['confirmed', 'completed', 'cancelled'], true)) {
-            $booking->update([
-                'status' => 'cancelled',
-            ]);
-        }
+        $booking->update([
+            'status' => 'cancelled',
+        ]);
 
         return redirect()->route('user.profile')->with('status', 'booking-cancelled');
+    }
+
+    private function isWithinModifiableWindow(Booking $booking): bool
+    {
+        return Carbon::now()->addDays(3)->lte($this->eventStart($booking));
+    }
+
+    private function eventStart(Booking $booking): Carbon
+    {
+        return Carbon::parse($booking->booking_date->format('Y-m-d').' '.$booking->booking_time);
     }
 
     public function destroy(Request $request, Booking $booking): RedirectResponse
@@ -319,7 +330,8 @@ class BookingPaymentController extends Controller
     public function reschedule(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_if(in_array($booking->status, ['confirmed', 'completed', 'cancelled'], true), 422, 'This booking cannot be rescheduled.');
+        abort_if(in_array($booking->status, ['completed', 'cancelled'], true), 422, 'This booking cannot be rescheduled.');
+        abort_unless($this->isWithinModifiableWindow($booking), 422, 'Bookings can only be rescheduled up to 3 days before the event.');
 
         $validated = $request->validate([
             'package' => ['required', 'in:wedding,reservation,unlimited'],

@@ -147,7 +147,21 @@ export default function UserProfile() {
                             package: booking.package_slug ?? '',
                             option: String(booking.package_option ?? 0),
                         });
+                        const rescheduleParams = new URLSearchParams({
+                            reschedule: String(booking.id),
+                            package: booking.package_slug ?? '',
+                            option: String(booking.package_option ?? 0),
+                            date: typeof booking.booking_date === 'string' ? booking.booking_date.slice(0, 10) : '',
+                            booth_size: booking.booth_size ?? '3 x 3 meter',
+                            time: booking.booking_time ?? '',
+                            address: booking.customer_address ?? '',
+                            location: booking.booking_location ?? '',
+                        });
                         const isCancelled = booking.status === 'cancelled';
+                        const daysUntilEvent = Math.ceil(
+                            (new Date(booking.booking_date) - new Date()) / (1000 * 60 * 60 * 24),
+                        );
+                        const canModify = !['completed', 'cancelled'].includes(booking.status) && daysUntilEvent >= 3;
 
                         return (
                             <article className="profile-booking-card" key={booking.booking_code}>
@@ -164,7 +178,18 @@ export default function UserProfile() {
                                 <p>□ {(booking.payment_method ?? '-').toUpperCase()} • {(booking.payment_provider ?? '-').toUpperCase()}</p>
                                 <div>
                                     <Link to={`/payment/success/${booking.id}`}>View Receipt</Link>
-                                    {isCancelled ? (
+                                    {canModify ? (
+                                        <>
+                                            <Link className="profile-booking-secondary" to={`/book?${rescheduleParams.toString()}`}>
+                                                Reschedule
+                                            </Link>
+                                            <form method="POST" action={`/bookings/${booking.id}/cancel`}>
+                                                <input type="hidden" name="_token" value={csrfToken} />
+                                                <input type="hidden" name="_method" value="PATCH" />
+                                                <button type="submit">Cancel</button>
+                                            </form>
+                                        </>
+                                    ) : isCancelled ? (
                                         <form
                                             method="POST"
                                             action={`/bookings/${booking.id}`}

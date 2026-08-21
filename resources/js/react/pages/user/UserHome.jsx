@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SocialLinks from '../../components/SocialLinks';
 
@@ -40,17 +40,9 @@ const packages = [
 ];
 
 export default function UserHome() {
-    const [showGuide, setShowGuide] = useState(false);
-
-    useEffect(() => {
-        const seen = window.localStorage.getItem('eightfinity-booking-guide-seen');
-        if (!seen) {
-            setShowGuide(true);
-        }
-    }, []);
+    const [showGuide, setShowGuide] = useState(true);
 
     function closeGuide() {
-        window.localStorage.setItem('eightfinity-booking-guide-seen', '1');
         setShowGuide(false);
     }
 
