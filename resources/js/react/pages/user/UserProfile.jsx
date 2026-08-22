@@ -43,6 +43,7 @@ function statusLabel(status) {
 export default function UserProfile() {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showEditProfile, setShowEditProfile] = useState(false);
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [profile, setProfile] = useState(() => window.__USER_PROFILE__ ?? null);
     const [profileError, setProfileError] = useState('');
 
@@ -158,14 +159,15 @@ export default function UserProfile() {
                             location: booking.booking_location ?? '',
                         });
                         const isCancelled = booking.status === 'cancelled';
+                        const isCompleted = booking.status === 'completed';
                         const isPending = booking.status === 'pending';
                         const daysUntilEvent = Math.ceil(
                             (new Date(booking.booking_date) - new Date()) / (1000 * 60 * 60 * 24),
                         );
                         const withinRescheduleWindow = daysUntilEvent >= 3;
-                        const canCancel = !['completed', 'cancelled'].includes(booking.status) && withinRescheduleWindow;
                         const canReschedule = isPending && withinRescheduleWindow;
-                        const showRebook = !canReschedule && !canCancel && !isCancelled;
+                        const canDelete = isCancelled || isCompleted;
+                        const showRebook = !canReschedule && !canDelete;
 
                         return (
                             <article className="profile-booking-card" key={booking.booking_code}>
@@ -187,19 +189,12 @@ export default function UserProfile() {
                                             Reschedule
                                         </Link>
                                     )}
-                                    {canCancel && (
-                                        <form method="POST" action={`/bookings/${booking.id}/cancel`}>
-                                            <input type="hidden" name="_token" value={csrfToken} />
-                                            <input type="hidden" name="_method" value="PATCH" />
-                                            <button type="submit">Cancel</button>
-                                        </form>
-                                    )}
-                                    {isCancelled && (
+                                    {canDelete && (
                                         <form
                                             method="POST"
                                             action={`/bookings/${booking.id}`}
                                             onSubmit={(event) => {
-                                                if (!window.confirm('Delete this cancelled booking?')) {
+                                                if (!window.confirm('Delete this booking?')) {
                                                     event.preventDefault();
                                                 }
                                             }}
@@ -244,6 +239,48 @@ export default function UserProfile() {
                     <div><dt>Alternate Phone</dt><dd>{user.alternate_phone ?? emptyValue}</dd></div>
                     <div><dt>Address</dt><dd>{user.address ?? (isLoadingProfile ? emptyValue : 'No booking address yet')}</dd></div>
                 </dl>
+            </section>
+
+            <section className="profile-info-card profile-password-card">
+                <header>
+                    <h2>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="4" y="11" width="16" height="9" rx="2" />
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                        </svg>
+                        Change Password
+                    </h2>
+                    <button type="button" onClick={() => setShowPasswordForm((visible) => !visible)}>
+                        {showPasswordForm ? 'Close' : 'Update'}
+                    </button>
+                </header>
+                {showPasswordForm && (
+                    <form method="POST" action="/password" className="profile-password-form">
+                        <input type="hidden" name="_token" value={csrfToken} />
+                        <input type="hidden" name="_method" value="PUT" />
+                        <label>
+                            Current Password
+                            <input name="current_password" type="password" required />
+                        </label>
+                        <label>
+                            New Password
+                            <input
+                                minLength="8"
+                                name="password"
+                                pattern="(?=.*[A-Z])(?=.*\d).{8,}"
+                                required
+                                title="Use at least 8 characters, 1 uppercase letter, and 1 number"
+                                type="password"
+                            />
+                            <small>Use 8+ characters with at least 1 uppercase letter and 1 number</small>
+                        </label>
+                        <label>
+                            Confirm New Password
+                            <input name="password_confirmation" type="password" minLength="8" required />
+                        </label>
+                        <button type="submit" className="profile-save-button">Update Password</button>
+                    </form>
+                )}
             </section>
 
             <div className="profile-signout">

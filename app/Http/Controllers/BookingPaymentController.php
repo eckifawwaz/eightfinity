@@ -297,14 +297,7 @@ class BookingPaymentController extends Controller
     public function cancel(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_if(in_array($booking->status, ['completed', 'cancelled'], true), 422, 'This booking cannot be cancelled.');
-        abort_unless($this->isWithinModifiableWindow($booking), 422, 'Bookings can only be cancelled up to 3 days before the event.');
-
-        $booking->update([
-            'status' => 'cancelled',
-        ]);
-
-        return redirect()->route('user.profile')->with('status', 'booking-cancelled');
+        abort(422, 'Bookings can no longer be self-cancelled. Please contact admin.');
     }
 
     private function isWithinModifiableWindow(Booking $booking): bool
@@ -320,7 +313,7 @@ class BookingPaymentController extends Controller
     public function destroy(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_unless($booking->status === 'cancelled', 422, 'Only cancelled bookings can be deleted.');
+        abort_unless(in_array($booking->status, ['cancelled', 'completed'], true), 422, 'Only cancelled or completed bookings can be deleted.');
 
         $booking->delete();
 
