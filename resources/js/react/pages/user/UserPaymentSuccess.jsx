@@ -151,6 +151,9 @@ export default function UserPaymentSuccess() {
                                 <dd className="payment-booking-code">#{activeBooking.booking_code ?? '-'}</dd>
                             </div>
                         </dl>
+                        <small className="payment-reschedule-note">
+                            Silahkan hubungi admin untuk reschedule maksimal H-3 sebelum hari-H.
+                        </small>
                     </article>
 
                     <article className="payment-detail-card">

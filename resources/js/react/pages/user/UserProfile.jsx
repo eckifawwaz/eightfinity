@@ -158,10 +158,14 @@ export default function UserProfile() {
                             location: booking.booking_location ?? '',
                         });
                         const isCancelled = booking.status === 'cancelled';
+                        const isPending = booking.status === 'pending';
                         const daysUntilEvent = Math.ceil(
                             (new Date(booking.booking_date) - new Date()) / (1000 * 60 * 60 * 24),
                         );
-                        const canModify = !['completed', 'cancelled'].includes(booking.status) && daysUntilEvent >= 3;
+                        const withinRescheduleWindow = daysUntilEvent >= 3;
+                        const canCancel = !['completed', 'cancelled'].includes(booking.status) && withinRescheduleWindow;
+                        const canReschedule = isPending && withinRescheduleWindow;
+                        const showRebook = !canReschedule && !canCancel && !isCancelled;
 
                         return (
                             <article className="profile-booking-card" key={booking.booking_code}>
@@ -178,18 +182,19 @@ export default function UserProfile() {
                                 <p>□ {(booking.payment_method ?? '-').toUpperCase()} • {(booking.payment_provider ?? '-').toUpperCase()}</p>
                                 <div>
                                     <Link to={`/payment/success/${booking.id}`}>View Receipt</Link>
-                                    {canModify ? (
-                                        <>
-                                            <Link className="profile-booking-secondary" to={`/book?${rescheduleParams.toString()}`}>
-                                                Reschedule
-                                            </Link>
-                                            <form method="POST" action={`/bookings/${booking.id}/cancel`}>
-                                                <input type="hidden" name="_token" value={csrfToken} />
-                                                <input type="hidden" name="_method" value="PATCH" />
-                                                <button type="submit">Cancel</button>
-                                            </form>
-                                        </>
-                                    ) : isCancelled ? (
+                                    {canReschedule && (
+                                        <Link className="profile-booking-secondary" to={`/book?${rescheduleParams.toString()}`}>
+                                            Reschedule
+                                        </Link>
+                                    )}
+                                    {canCancel && (
+                                        <form method="POST" action={`/bookings/${booking.id}/cancel`}>
+                                            <input type="hidden" name="_token" value={csrfToken} />
+                                            <input type="hidden" name="_method" value="PATCH" />
+                                            <button type="submit">Cancel</button>
+                                        </form>
+                                    )}
+                                    {isCancelled && (
                                         <form
                                             method="POST"
                                             action={`/bookings/${booking.id}`}
@@ -203,12 +208,18 @@ export default function UserProfile() {
                                             <input type="hidden" name="_method" value="DELETE" />
                                             <button type="submit">Delete</button>
                                         </form>
-                                    ) : (
+                                    )}
+                                    {showRebook && (
                                         <Link className="profile-booking-secondary" to={`/book?${rebookParams.toString()}`}>
                                             Rebook
                                         </Link>
                                     )}
                                 </div>
+                                {canReschedule && (
+                                    <small className="profile-reschedule-note">
+                                        Reschedule maksimal H-3 dari jadwal awal yang ditentukan.
+                                    </small>
+                                )}
                             </article>
                         );
                     }) : (

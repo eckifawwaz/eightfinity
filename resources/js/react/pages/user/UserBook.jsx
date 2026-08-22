@@ -157,13 +157,18 @@ export default function UserBook() {
             <section className="user-book-section">
                 <div className="section-title">
                     <h2>Choose Your Experience</h2>
-                    <p>From quick snaps to premium sessions, we&apos;ve got you covered</p>
+                    <p>
+                        {isReschedule
+                            ? 'Paket & durasi tidak bisa diubah saat reschedule — hanya jadwal dan lokasi yang bisa diperbarui.'
+                            : "From quick snaps to premium sessions, we've got you covered"}
+                    </p>
                 </div>
 
-                <div className="book-package-tabs">
+                <div className={`book-package-tabs ${isReschedule ? 'locked' : ''}`}>
                     {Object.entries(packages).map(([slug, item]) => (
                         <button
                             className={selectedSlug === slug ? 'selected' : ''}
+                            disabled={isReschedule}
                             onClick={() => selectPackage(slug)}
                             type="button"
                             key={slug}
@@ -173,14 +178,15 @@ export default function UserBook() {
                     ))}
                 </div>
 
-                <div className="book-duration-grid">
+                <div className={`book-duration-grid ${isReschedule ? 'locked' : ''}`}>
                     {selectedPackage.options.map((item, index) => (
                         <article
+                            aria-disabled={isReschedule}
                             className={selectedOption === index ? 'selected' : ''}
                             key={item.duration}
-                            onClick={() => setSelectedOption(index)}
+                            onClick={() => !isReschedule && setSelectedOption(index)}
                             onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
+                                if (!isReschedule && (event.key === 'Enter' || event.key === ' ')) {
                                     event.preventDefault();
                                     setSelectedOption(index);
                                 }
@@ -196,6 +202,7 @@ export default function UserBook() {
                                 <small>Unlimited Service</small>
                             </header>
                             <button
+                                disabled={isReschedule}
                                 type="button"
                                 onClick={(event) => {
                                     event.stopPropagation();
@@ -242,7 +249,7 @@ export default function UserBook() {
                 {isDateUnavailable && (
                     <section className="booking-date-warning">
                         <strong>Tanggal ini sudah penuh</strong>
-                        <p>Eightfinity saat ini hanya menerima satu booking per hari. Pilih tanggal lain untuk melanjutkan.</p>
+                        <p>Pilih tanggal lain untuk melanjutkan.</p>
                     </section>
                 )}
 
@@ -322,8 +329,6 @@ export default function UserBook() {
                     <form className="reschedule-booking-form" method="POST" action={`/bookings/${rescheduleId}/reschedule`}>
                         <input type="hidden" name="_token" value={csrfToken} />
                         <input type="hidden" name="_method" value="PATCH" />
-                        <input type="hidden" name="package" value={selectedSlug} />
-                        <input type="hidden" name="option" value={selectedOption} />
                         <input type="hidden" name="date" value={date} />
                         <input type="hidden" name="booth_size" value={boothSize} />
                         <input type="hidden" name="time" value={time} />

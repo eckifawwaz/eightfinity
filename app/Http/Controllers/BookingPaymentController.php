@@ -331,11 +331,10 @@ class BookingPaymentController extends Controller
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
         abort_if(in_array($booking->status, ['completed', 'cancelled'], true), 422, 'This booking cannot be rescheduled.');
+        abort_if($booking->status === 'confirmed', 422, 'This booking is already confirmed by admin. Please contact admin to reschedule.');
         abort_unless($this->isWithinModifiableWindow($booking), 422, 'Bookings can only be rescheduled up to 3 days before the event.');
 
         $validated = $request->validate([
-            'package' => ['required', 'in:wedding,reservation,unlimited'],
-            'option' => ['required', 'integer', 'min:0'],
             'date' => ['required', 'date', 'after:today'],
             'time' => ['required', 'date_format:H:i'],
             'booth_size' => ['required', 'in:'.implode(',', self::ROOM_SIZES)],
@@ -343,22 +342,14 @@ class BookingPaymentController extends Controller
             'location' => ['required', 'string', 'max:255'],
         ]);
 
-        $package = self::PACKAGES[$validated['package']];
-        $option = (int) $validated['option'];
-
-        abort_unless(isset($package['prices'][$option]), 422, 'Invalid package option.');
         $this->ensureBookingDateIsAvailable($validated['date'], $booking);
 
         $booking->update([
-            'package_slug' => $validated['package'],
-            'package_name' => $package['name'],
-            'package_option' => $option,
             'booking_date' => $validated['date'],
             'booking_time' => $validated['time'],
             'booth_size' => $validated['booth_size'],
             'customer_address' => $validated['address'],
             'booking_location' => $validated['location'],
-            'amount' => $package['prices'][$option],
             'status' => 'pending',
         ]);
 
@@ -380,7 +371,7 @@ class BookingPaymentController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'date' => 'Tanggal tersebut sudah penuh. Eightfinity saat ini hanya menerima satu booking per hari.',
+            'date' => 'Tanggal tersebut sudah penuh.',
         ]);
     }
 }
