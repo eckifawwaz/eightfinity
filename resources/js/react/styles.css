@@ -3181,6 +3181,16 @@ form.admin-security-row {
     color: #3e6eca;
 }
 
+.status-pill.expired {
+    background: #ece9f4;
+    color: #6b5ea8;
+}
+
+.payment-state.expired {
+    color: #6b5ea8;
+    font-weight: 800;
+}
+
 .booking-actions {
     display: flex;
     gap: 9px;
@@ -6982,6 +6992,8 @@ form.admin-security-row {
 .profile-status.completed,
 .profile-status.confirmed { background: #e3f7ee; color: #2d8a58; }
 .profile-status.cancelled { background: #ffe5e5; color: #c94b4b; }
+.profile-status.expired { background: #ece9f4; color: #6b5ea8; }
+.profile-status.pending.awaiting-confirmation { background: #e3eefc; color: #3b6bc4; }
 
 .profile-booking-card > div {
     display: grid;
@@ -7026,6 +7038,11 @@ form.admin-security-row {
     background: #fde8e8;
     color: #c94b4b;
     width: 100%;
+}
+
+.profile-booking-card button.profile-continue-payment-button {
+    background: #f6aa3b;
+    color: #ffffff;
 }
 
 .profile-empty-card {

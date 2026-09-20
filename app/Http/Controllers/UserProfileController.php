@@ -40,6 +40,7 @@ class UserProfileController extends Controller
                 'payment_method',
                 'payment_provider',
                 'status',
+                'midtrans_status',
                 'photos_taken',
                 'created_at',
             ]);

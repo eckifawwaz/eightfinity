@@ -29,9 +29,12 @@ function formatDate(value) {
     }).format(date);
 }
 
-function paymentState(status) {
-    if (status === 'cancelled') return 'cancelled';
-    if (status === 'pending') return 'pending';
+function paymentState(booking) {
+    if (booking.status === 'cancelled') return 'cancelled';
+    if (booking.status === 'expired') return 'expired';
+    if (booking.status === 'pending') {
+        return ['settlement', 'capture'].includes(booking.midtrans_status) ? 'paid' : 'pending';
+    }
     return 'paid';
 }
 
@@ -105,7 +108,7 @@ export default function AdminBookings() {
                         />
                     </label>
                     <div className="booking-tabs">
-                        {['all', 'confirmed', 'pending', 'completed', 'cancelled'].map((tab) => (
+                        {['all', 'confirmed', 'pending', 'completed', 'cancelled', 'expired'].map((tab) => (
                             <button
                                 className={activeTab === tab ? 'active' : ''}
                                 key={tab}
@@ -135,7 +138,7 @@ export default function AdminBookings() {
                         <tbody>
                             {filteredBookings.map((booking) => {
                                 const duration = packageDurations[booking.package_name]?.[booking.package_option] ?? '-';
-                                const payment = paymentState(booking.status);
+                                const payment = paymentState(booking);
 
                                 return (
                                     <tr key={booking.id}>
@@ -172,6 +175,7 @@ export default function AdminBookings() {
                                                     <option value="confirmed">Confirmed</option>
                                                     <option value="completed">Completed</option>
                                                     <option value="cancelled">Cancelled</option>
+                                                    <option value="expired">Expired</option>
                                                 </select>
                                                 <button type="submit">Save</button>
                                             </form>

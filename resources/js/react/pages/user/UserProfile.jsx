@@ -33,10 +33,17 @@ function formatDate(value) {
     }).format(date);
 }
 
-function statusLabel(status) {
-    if (status === 'pending') return 'Pending';
-    if (status === 'cancelled') return 'Cancelled';
-    if (status === 'completed') return 'Completed';
+function isPaidAwaitingConfirmation(booking) {
+    return booking.status === 'pending' && ['settlement', 'capture'].includes(booking.midtrans_status);
+}
+
+function statusLabel(booking) {
+    if (booking.status === 'pending') {
+        return isPaidAwaitingConfirmation(booking) ? 'Menunggu Konfirmasi Admin' : 'Pending Payment';
+    }
+    if (booking.status === 'expired') return 'Payment Expired';
+    if (booking.status === 'cancelled') return 'Cancelled';
+    if (booking.status === 'completed') return 'Completed';
     return 'Confirmed';
 }
 
@@ -160,13 +167,14 @@ export default function UserProfile() {
                         });
                         const isCancelled = booking.status === 'cancelled';
                         const isCompleted = booking.status === 'completed';
-                        const isPending = booking.status === 'pending';
+                        const isPending = booking.status === 'pending' && !isPaidAwaitingConfirmation(booking);
+                        const isExpired = booking.status === 'expired';
                         const daysUntilEvent = Math.ceil(
                             (new Date(booking.booking_date) - new Date()) / (1000 * 60 * 60 * 24),
                         );
                         const withinRescheduleWindow = daysUntilEvent >= 3;
                         const canReschedule = isPending && withinRescheduleWindow;
-                        const canDelete = isCancelled || isCompleted;
+                        const canDelete = isCancelled || isCompleted || isExpired;
                         const showRebook = !canReschedule && !canDelete;
 
                         return (
@@ -176,14 +184,30 @@ export default function UserProfile() {
                                         <h3>{booking.package_name}</h3>
                                         <small>#{booking.booking_code}</small>
                                     </div>
-                                    <span className={`profile-status ${booking.status}`}>{statusLabel(booking.status)}</span>
+                                    <span
+                                        className={`profile-status ${booking.status}${
+                                            isPaidAwaitingConfirmation(booking) ? ' awaiting-confirmation' : ''
+                                        }`}
+                                    >
+                                        {statusLabel(booking)}
+                                    </span>
                                 </header>
                                 <p>▣ {formatDate(booking.booking_date)} • {booking.booking_time}</p>
                                 <p>⌖ {booking.booking_location ?? '-'} • {booking.booth_size ?? '3 x 3 meter'}</p>
                                 <p>◇ {duration} • {currency.format(booking.amount ?? 0)}</p>
                                 <p>□ {(booking.payment_method ?? '-').toUpperCase()} • {(booking.payment_provider ?? '-').toUpperCase()}</p>
                                 <div>
-                                    <Link to={`/payment/success/${booking.id}`}>View Receipt</Link>
+                                    {!isPending && !isExpired && (
+                                        <Link to={`/payment/success/${booking.id}`}>View Receipt</Link>
+                                    )}
+                                    {isPending && (
+                                        <form method="POST" action={`/bookings/${booking.id}/continue-payment`}>
+                                            <input type="hidden" name="_token" value={csrfToken} />
+                                            <button className="profile-continue-payment-button" type="submit">
+                                                Lanjut Bayar
+                                            </button>
+                                        </form>
+                                    )}
                                     {canReschedule && (
                                         <Link className="profile-booking-secondary" to={`/book?${rescheduleParams.toString()}`}>
                                             Reschedule

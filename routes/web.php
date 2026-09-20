@@ -94,6 +94,10 @@ Route::middleware('portal:user')->group(function () {
             Route::view('/payment', 'react')->name('user.payment');
             Route::post('/payment', [BookingPaymentController::class, 'store'])->name('user.payment.store');
             Route::get('/payment/return', [BookingPaymentController::class, 'paymentReturn'])->name('user.payment.return');
+            Route::get('/payment/finish/{booking}', [BookingPaymentController::class, 'paymentFinish'])
+                ->name('user.payment.finish');
+            Route::post('/bookings/{booking}/continue-payment', [BookingPaymentController::class, 'continuePayment'])
+                ->name('user.bookings.continue-payment');
             Route::get('/payment/success/{booking}', [BookingPaymentController::class, 'success'])
                 ->name('user.payment.success');
             Route::get('/payment/success/{booking}/data', [BookingPaymentController::class, 'successData'])

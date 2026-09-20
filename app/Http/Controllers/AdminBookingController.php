@@ -30,6 +30,7 @@ class AdminBookingController extends Controller
                 'payment_method' => $booking->payment_method,
                 'payment_provider' => $booking->payment_provider,
                 'status' => $booking->status,
+                'midtrans_status' => $booking->midtrans_status,
             ]);
 
         return view('react', [
@@ -40,7 +41,7 @@ class AdminBookingController extends Controller
     public function updateStatus(Request $request, Booking $booking): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'in:pending,confirmed,completed,cancelled'],
+            'status' => ['required', 'in:pending,confirmed,completed,cancelled,expired'],
         ]);
 
         $booking->update([

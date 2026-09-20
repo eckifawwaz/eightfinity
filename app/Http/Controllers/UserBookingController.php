@@ -14,7 +14,7 @@ class UserBookingController extends Controller
 
         $unavailableDates = Booking::query()
             ->whereDate('booking_date', '>=', today())
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled', 'expired'])
             ->when($rescheduleId, function ($query, string $rescheduleId) use ($request) {
                 $query->where(function ($query) use ($request, $rescheduleId) {
                     $query

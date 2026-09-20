@@ -17,6 +17,7 @@ use Illuminate\View\View;
 use Midtrans\Config as MidtransConfig;
 use Midtrans\Notification as MidtransNotification;
 use Midtrans\Snap;
+use Midtrans\Transaction as MidtransTransaction;
 
 class BookingPaymentController extends Controller
 {
@@ -133,7 +134,7 @@ class BookingPaymentController extends Controller
                 'phone' => $booking->user->phone ?? null,
             ],
             'callbacks' => [
-                'finish' => route('user.payment.success', $booking),
+                'finish' => route('user.payment.finish', $booking),
             ],
         ];
 
@@ -199,10 +200,7 @@ class BookingPaymentController extends Controller
             return response()->json(['message' => 'Booking not found'], 404);
         }
 
-        $status = $this->bookingStatusFromMidtrans(
-            $notification->transaction_status,
-            $notification->fraud_status
-        );
+        $status = $this->bookingStatusFromMidtrans($notification->transaction_status);
 
         $booking->update([
             'status' => $status,
@@ -216,16 +214,15 @@ class BookingPaymentController extends Controller
         return response()->json(['message' => 'OK']);
     }
 
-    private function bookingStatusFromMidtrans(?string $transactionStatus, ?string $fraudStatus): string
+    /**
+     * Payment success never auto-confirms a booking; admin must confirm manually
+     * after reviewing. Only cancel/expire/refund outcomes move the status.
+     */
+    private function bookingStatusFromMidtrans(?string $transactionStatus): string
     {
-        if ($transactionStatus === 'capture') {
-            return $fraudStatus === 'challenge' ? 'pending' : 'confirmed';
-        }
-
         return match ($transactionStatus) {
-            'settlement' => 'confirmed',
-            'pending' => 'pending',
-            'cancel', 'deny', 'expire', 'failure' => 'cancelled',
+            'cancel', 'deny', 'failure' => 'cancelled',
+            'expire' => 'expired',
             'refund', 'partial_refund' => 'refunded',
             default => 'pending',
         };
@@ -274,6 +271,65 @@ class BookingPaymentController extends Controller
         );
     }
 
+    public function paymentFinish(Request $request, Booking $booking): RedirectResponse
+    {
+        abort_unless($booking->user_id === $request->user()->id, 403);
+
+        if ($booking->status === 'pending' && $booking->midtrans_order_id) {
+            $this->refreshBookingFromMidtrans($booking);
+        }
+
+        if (in_array($booking->status, ['confirmed', 'completed'], true)) {
+            return redirect()->route('user.payment.success', $booking);
+        }
+
+        return redirect()->route('user.profile');
+    }
+
+    private function refreshBookingFromMidtrans(Booking $booking): void
+    {
+        $this->configureMidtrans();
+
+        try {
+            $status = MidtransTransaction::status($booking->midtrans_order_id);
+        } catch (Exception $exception) {
+            Log::warning('Midtrans status check failed on payment finish', [
+                'booking_id' => $booking->id,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return;
+        }
+
+        $booking->update([
+            'status' => $this->bookingStatusFromMidtrans($status->transaction_status ?? null),
+            'midtrans_transaction_id' => $status->transaction_id ?? $booking->midtrans_transaction_id,
+            'midtrans_payment_type' => $status->payment_type ?? $booking->midtrans_payment_type,
+            'midtrans_status' => $status->transaction_status ?? $booking->midtrans_status,
+        ]);
+    }
+
+    public function continuePayment(Request $request, Booking $booking): RedirectResponse
+    {
+        abort_unless($booking->user_id === $request->user()->id, 403);
+        abort_unless($booking->status === 'pending', 422, 'This booking is no longer awaiting payment.');
+        abort_if(
+            in_array($booking->midtrans_status, ['settlement', 'capture'], true),
+            422,
+            'This booking has already been paid and is awaiting admin confirmation.'
+        );
+
+        if ($booking->midtrans_redirect_url) {
+            return redirect()->away($booking->midtrans_redirect_url);
+        }
+
+        if ($paymentLink = $this->paymentLinkFor($booking)) {
+            return redirect()->away($paymentLink);
+        }
+
+        abort(422, 'Payment link is not available for this booking.');
+    }
+
     public function paymentReturn(Request $request): RedirectResponse
     {
         $booking = Booking::query()
@@ -313,7 +369,7 @@ class BookingPaymentController extends Controller
     public function destroy(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_unless(in_array($booking->status, ['cancelled', 'completed'], true), 422, 'Only cancelled or completed bookings can be deleted.');
+        abort_unless(in_array($booking->status, ['cancelled', 'completed', 'expired'], true), 422, 'Only cancelled, completed, or expired bookings can be deleted.');
 
         $booking->delete();
 
@@ -323,8 +379,13 @@ class BookingPaymentController extends Controller
     public function reschedule(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_if(in_array($booking->status, ['completed', 'cancelled'], true), 422, 'This booking cannot be rescheduled.');
+        abort_if(in_array($booking->status, ['completed', 'cancelled', 'expired'], true), 422, 'This booking cannot be rescheduled.');
         abort_if($booking->status === 'confirmed', 422, 'This booking is already confirmed by admin. Please contact admin to reschedule.');
+        abort_if(
+            in_array($booking->midtrans_status, ['settlement', 'capture'], true),
+            422,
+            'This booking has already been paid and is awaiting admin confirmation. Please contact admin to reschedule.'
+        );
         abort_unless($this->isWithinModifiableWindow($booking), 422, 'Bookings can only be rescheduled up to 3 days before the event.');
 
         $validated = $request->validate([
@@ -353,7 +414,7 @@ class BookingPaymentController extends Controller
     {
         $query = Booking::query()
             ->whereDate('booking_date', $date)
-            ->where('status', '!=', 'cancelled');
+            ->whereNotIn('status', ['cancelled', 'expired']);
 
         if ($ignoredBooking) {
             $query->whereKeyNot($ignoredBooking->id);
