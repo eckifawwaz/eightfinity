@@ -19,7 +19,8 @@ class AdminDashboardController extends Controller
         $upcomingEvents = Booking::whereIn('status', ['pending', 'confirmed'])
             ->whereDate('booking_date', '>', $today)
             ->count();
-        $revenueThisMonth = Booking::whereYear('booking_date', $today->year)
+        $revenueThisMonth = Booking::withTrashed()
+            ->whereYear('booking_date', $today->year)
             ->whereMonth('booking_date', $today->month)
             ->whereIn('status', ['confirmed', 'completed'])
             ->sum('amount');

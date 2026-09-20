@@ -114,7 +114,7 @@ class ProfileTest extends TestCase
             ->delete("/bookings/{$booking->id}");
 
         $response->assertRedirect('/profile');
-        $this->assertDatabaseMissing('bookings', [
+        $this->assertSoftDeleted('bookings', [
             'id' => $booking->id,
         ]);
     }

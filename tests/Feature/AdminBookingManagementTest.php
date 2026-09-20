@@ -39,7 +39,7 @@ class AdminBookingManagementTest extends TestCase
             ->delete("/admin/bookings/{$booking->id}");
 
         $response->assertRedirect('/admin/bookings');
-        $this->assertDatabaseMissing('bookings', [
+        $this->assertSoftDeleted('bookings', [
             'id' => $booking->id,
         ]);
     }

@@ -43,7 +43,7 @@ class AdminRevenueController extends Controller
 
     private function sumBetween(Carbon $start, Carbon $end): int
     {
-        return (int) Booking::query()
+        return (int) Booking::withTrashed()
             ->whereIn('status', self::REVENUE_STATUSES)
             ->whereBetween('created_at', [$start, $end])
             ->sum('amount');
@@ -60,7 +60,7 @@ class AdminRevenueController extends Controller
 
     private function monthlyTrend(int $year): array
     {
-        $bookings = Booking::query()
+        $bookings = Booking::withTrashed()
             ->whereIn('status', self::REVENUE_STATUSES)
             ->whereYear('created_at', $year)
             ->get(['created_at', 'amount']);
