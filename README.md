@@ -15,12 +15,11 @@ Eightfinity adalah aplikasi booking photo booth berbasis Laravel dan React. Apli
 - Register dan login user.
 - Melihat home dan detail package.
 - Membuat booking berdasarkan package, tanggal, jam, jumlah pax, alamat, dan lokasi.
-- Melakukan payment dengan QR simulasi.
-- Melihat receipt booking.
-- Melihat booking history di profile.
+- Melakukan payment melalui Midtrans.
+- Melihat dan download receipt PDF.
+- Melihat booking history beserta status dan countdown pembayaran.
 - Edit profile.
-- Cancel booking.
-- Reschedule booking.
+- Reschedule booking maksimal sebelum memasuki H-3.
 - Logout.
 
 ## Fitur Admin
@@ -28,7 +27,7 @@ Eightfinity adalah aplikasi booking photo booth berbasis Laravel dan React. Apli
 - Login admin dengan guard terpisah.
 - Dashboard metrik booking, queue, dan revenue.
 - Manage bookings dan update status booking.
-- Manage queue untuk start, pause, dan complete session.
+- Manage queue untuk tambah/hapus antrean, start, pause, dan complete session.
 - Manage customer data.
 - Melihat dan mengedit detail customer.
 - Layout editor 2D per booking.
@@ -94,8 +93,11 @@ Untuk local development, sesuaikan `.env`. Contoh SQLite:
 APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://127.0.0.1:8000
+BOOKING_TIMEZONE=Asia/Jakarta
 USER_APP_URL=http://127.0.0.1:8000
 ADMIN_APP_URL=http://127.0.0.1:8001
+SESSION_DOMAIN=null
+SESSION_SECURE_COOKIE=false
 
 DB_CONNECTION=sqlite
 DB_DATABASE=/absolute/path/to/eightfinity/database/database.sqlite
@@ -192,8 +194,12 @@ Sesuaikan `.env` production:
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://your-domain.com
+BOOKING_TIMEZONE=Asia/Jakarta
 USER_APP_URL=https://your-domain.com
 ADMIN_APP_URL=https://admin.your-domain.com
+SESSION_DOMAIN=null
+SESSION_SECURE_COOKIE=true
+SESSION_COOKIE=eightfinity_session
 
 ADMIN_SEED_NAME="EightFinity Admin"
 ADMIN_SEED_EMAIL=admin@your-domain.com
@@ -201,7 +207,9 @@ ADMIN_SEED_PASSWORD=your-secure-admin-password
 ADMIN_SEED_PHONE=+6280000000000
 
 MIDTRANS_WEDDING_4_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_WEDDING_6_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
 MIDTRANS_WEDDING_8_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
+MIDTRANS_RESERVATION_3_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
 MIDTRANS_RESERVATION_4_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
 MIDTRANS_RESERVATION_4_PLUS_1_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
 MIDTRANS_UNLIMITED_2_HOURS_PAYMENT_LINK=https://app.midtrans.com/payment-links/...
@@ -251,6 +259,19 @@ Pastikan folder berikut writable oleh web server:
 
 - `storage`
 - `bootstrap/cache`
+
+### Scheduler / Cron Production
+
+Status booking membutuhkan Laravel Scheduler agar tetap berubah otomatis walaupun tidak ada user/admin yang sedang membuka halaman. Jalankan `schedule:run` setiap menit. Contoh Hostinger:
+
+```bash
+* * * * * /opt/alt/php84/usr/bin/php /home/USERNAME/domains/DOMAIN/app/artisan schedule:run >> /dev/null 2>&1
+```
+
+Scheduler menjalankan `bookings:sync-statuses` untuk:
+
+- mengubah booking `pending` menjadi `expired` ketika batas pembayaran berakhir;
+- mengubah booking `confirmed` menjadi `completed` setelah durasi sewa selesai.
 
 ## Struktur Penting
 

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\AdminBookingNotificationMail;
 use App\Models\Booking;
 use App\Models\User;
+use App\Support\BookingLifecycle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -64,7 +65,7 @@ class BookingPaymentTest extends TestCase
         $response = $this->actingAs($user)->post('/payment', [
             'package' => 'unlimited',
             'option' => 2,
-            'date' => now()->toDateString(),
+            'date' => now(BookingLifecycle::timezone())->toDateString(),
             'time' => '14:00',
             'booth_size' => '3 x 3 meter',
             'address' => 'Jl. Sudirman No. 10',
@@ -90,7 +91,7 @@ class BookingPaymentTest extends TestCase
         $response = $this->actingAs($user)->post('/payment', [
             'package' => 'unlimited',
             'option' => 2,
-            'date' => now()->addDay()->toDateString(),
+            'date' => now(BookingLifecycle::timezone())->addDay()->toDateString(),
             'time' => '14:00',
             'booth_size' => '3 x 3 meter',
             'address' => 'Jl. Sudirman No. 10',
@@ -147,7 +148,7 @@ class BookingPaymentTest extends TestCase
         Mail::fake();
 
         config([
-            'services.midtrans.payment_links.wedding.1' => 'https://app.sandbox.midtrans.com/payment-links/test-wedding-8-hours',
+            'services.midtrans.payment_links.wedding.2' => 'https://app.sandbox.midtrans.com/payment-links/test-wedding-8-hours',
         ]);
 
         $user = User::factory()->create([
@@ -161,7 +162,7 @@ class BookingPaymentTest extends TestCase
 
         $response = $this->actingAs($user)->post('/payment', [
             'package' => 'wedding',
-            'option' => 1,
+            'option' => 2,
             'date' => now()->addWeek()->toDateString(),
             'time' => '14:00',
             'booth_size' => '3 x 3 meter',
@@ -185,7 +186,7 @@ class BookingPaymentTest extends TestCase
         Mail::fake();
 
         config([
-            'services.midtrans.payment_links.reservation.0' => 'https://app.sandbox.midtrans.com/payment-links/test-reservation-4-hours',
+            'services.midtrans.payment_links.reservation.1' => 'https://app.sandbox.midtrans.com/payment-links/test-reservation-4-hours',
         ]);
 
         $user = User::factory()->create([
@@ -199,7 +200,7 @@ class BookingPaymentTest extends TestCase
 
         $response = $this->actingAs($user)->post('/payment', [
             'package' => 'reservation',
-            'option' => 0,
+            'option' => 1,
             'date' => now()->addWeek()->toDateString(),
             'time' => '14:00',
             'booth_size' => '3 x 3 meter',
@@ -223,7 +224,7 @@ class BookingPaymentTest extends TestCase
         Mail::fake();
 
         config([
-            'services.midtrans.payment_links.reservation.1' => 'https://app.sandbox.midtrans.com/payment-links/test-reservation-4-plus-1-hours',
+            'services.midtrans.payment_links.reservation.2' => 'https://app.sandbox.midtrans.com/payment-links/test-reservation-4-plus-1-hours',
         ]);
 
         $user = User::factory()->create([
@@ -237,7 +238,7 @@ class BookingPaymentTest extends TestCase
 
         $response = $this->actingAs($user)->post('/payment', [
             'package' => 'reservation',
-            'option' => 1,
+            'option' => 2,
             'date' => now()->addWeek()->toDateString(),
             'time' => '14:00',
             'booth_size' => '3 x 3 meter',
@@ -396,6 +397,7 @@ class BookingPaymentTest extends TestCase
 
     public function test_customer_can_book_a_date_after_previous_booking_was_cancelled(): void
     {
+        Storage::fake('local');
         Mail::fake();
         config(['services.midtrans.payment_links.unlimited.2' => null]);
 
@@ -413,6 +415,7 @@ class BookingPaymentTest extends TestCase
 
         $response = $this->actingAs($customer)->post('/payment', $this->paymentPayload([
             'date' => $date,
+            'payment_proof' => UploadedFile::fake()->image('proof.png'),
         ]));
 
         $booking = $customer->bookings()->firstOrFail();

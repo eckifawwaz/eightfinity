@@ -54,37 +54,34 @@ Alur:
    - Reservation Package
    - Unlimited Package
 3. User masuk ke halaman booking.
-4. User memilih opsi durasi, tanggal, jam, jumlah pax, alamat customer, dan lokasi booking.
+4. User memilih opsi durasi, tanggal, jam, ukuran booth, alamat customer, dan lokasi booking.
 5. Jika data lengkap, user bisa lanjut ke payment.
 
 Yang perlu dicek manual:
 - Tombol dari home/package detail ke booking.
 - Query parameter package dan option terbawa dengan benar.
-- Validasi tanggal minimal hari ini.
+- Validasi tanggal minimal besok dan tanggal yang sudah memiliki booking aktif tidak dapat dipilih untuk lanjut.
 
 ### 4. Payment
 
-Status: sudah ada, tapi masih simulasi QR.
+Status: terintegrasi Midtrans.
 
 Route:
 - `GET /payment`
 - `POST /payment`
+- `GET /payment/finish/{booking}`
+- `POST /midtrans/notification`
 
 Alur:
-1. User melihat ringkasan booking.
-2. Sistem menampilkan QR simulasi.
-3. User klik `Cek pembayaran`.
-4. Sistem membuat data booking dengan status `pending`.
-5. User diarahkan ke `/payment/success/{booking}`.
+1. User melihat ringkasan booking dan sistem mengecek ulang ketersediaan tanggal.
+2. Saat `Bayar Sekarang`, booking dibuat sebagai `pending` lalu user diarahkan ke Midtrans.
+3. Sebelum metode pembayaran dipilih, batas awal pembayaran adalah 24 jam.
+4. Setelah Midtrans mengembalikan tipe pembayaran, countdown mengikuti expiry provider (contoh fallback QRIS 5 menit).
+5. Pembayaran sukses kembali ke halaman receipt booking; pembayaran expired/cancelled kembali tercermin di Booking History.
 
 Catatan:
-- Backend menerima `payment_proof`, tapi UI payment sekarang belum menampilkan upload bukti pembayaran.
-- QR masih generated dummy, belum payment gateway asli.
-
-Prioritas tambahan:
-1. Tambahkan upload bukti pembayaran di UI payment, atau hapus requirement bukti jika memang tidak dipakai.
-2. Tampilkan instruksi pembayaran yang final.
-3. Pastikan data booking masuk database setelah submit.
+- Availability tanggal divalidasi di UI dan divalidasi ulang di backend dengan lock agar booking tanggal yang sama tidak lolos bersamaan.
+- Callback/status Midtrans tidak menurunkan booking yang sudah `confirmed/completed` kembali menjadi `pending/expired`, kecuali refund.
 
 ### 5. Payment Success
 
@@ -95,7 +92,7 @@ Route:
 
 Alur:
 1. User melihat receipt booking.
-2. User bisa download receipt text.
+2. User bisa download receipt PDF.
 3. Booking hanya bisa dilihat oleh owner booking.
 
 Yang perlu dicek manual:
@@ -117,14 +114,14 @@ Alur:
 2. User melihat personal information dan booking history.
 3. User bisa edit profile.
 4. User bisa view receipt.
-5. User bisa reschedule booking yang belum `completed` atau `cancelled`.
-6. User bisa cancel booking yang belum `completed` atau `cancelled`.
-7. Booking yang selesai atau batal bisa di-rebook.
+5. User bisa reschedule booking hanya sebelum memasuki H-3.
+6. Reschedule tidak membuat booking baru dan tidak meminta pembayaran ulang.
+7. Booking expired/cancelled/completed tetap dapat ditampilkan sebagai riwayat sesuai status.
 
 Yang perlu dicek manual:
 - Edit profile berhasil dan redirect tetap enak.
-- Cancel booking mengubah status menjadi `cancelled`.
-- Reschedule mengubah tanggal, jam, pax, package, alamat, lokasi, dan status kembali `pending`.
+- Reschedule ditolak mulai H-3.
+- Reschedule hanya mengubah jadwal/venue yang diizinkan dan tidak membuat pembayaran baru.
 
 ### 7. Logout
 
@@ -207,20 +204,16 @@ Route:
 - `PATCH /admin/queue/{booking}`
 
 Alur:
-1. Booking dengan status `pending` dan `confirmed` masuk queue.
-2. Booking `confirmed` tampil sebagai `In Session`.
-3. Booking `pending` tampil sebagai waiting queue.
-4. Admin bisa start session, pause session, complete session.
-5. Admin bisa masuk ke layout booking terkait.
+1. Hanya booking `confirmed` yang dapat menjadi event queue.
+2. Admin dapat menambah tamu antrean dengan jam check-in yang dibatasi ke jam sewa booking.
+3. Admin dapat Start Session, Complete Session, Pause/Resume booth, dan menghapus antrean.
+4. Jumlah foto otomatis mengikuti jumlah sesi tamu yang sudah `completed`.
+5. Session Progress dan tombol tambah foto manual tidak digunakan lagi.
+6. Admin bisa masuk ke layout booking terkait.
 
 Catatan:
-- Session progress masih statis 60%.
-- Estimasi wait time masih hitungan sederhana.
-
-Prioritas tambahan:
-1. Putuskan apakah boleh lebih dari satu booking berstatus `confirmed`.
-2. Jika hanya satu active session, tambahkan validasi backend.
-3. Buat progress session dinamis jika diperlukan.
+- Jam check-in default mengikuti waktu saat ini jika masih di dalam jam sewa; jika belum mulai, default ke jam mulai booking.
+- Duplicate submit antrean dilindungi client-side dan server-side.
 
 ### 5. Customer Data
 

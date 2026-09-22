@@ -3,14 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Support\BookingLifecycle;
+use App\Support\MidtransBookingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class AdminBookingController extends Controller
 {
-    public function index(): View
+    public function index(MidtransBookingService $midtrans): View
     {
+        // Keep operational statuses fresh even if the scheduler was delayed.
+        Booking::query()->whereIn('status', ['pending', 'confirmed'])->get()->each(function (Booking $booking) use ($midtrans) {
+            if ($booking->status === 'confirmed' && BookingLifecycle::eventEnd($booking)->lte(now())) {
+                $booking->update(['status' => 'completed']);
+
+                return;
+            }
+
+            if ($booking->status === 'pending') {
+                $midtrans->sync($booking);
+            }
+        });
+
         $bookings = Booking::with('user:id,name,email')
             ->latest()
             ->get()

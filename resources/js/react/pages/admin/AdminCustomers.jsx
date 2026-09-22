@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { csrfToken } from '../../utils/csrf';
+import ActionForm from '../../components/ActionForm';
 
 const currency = new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -227,19 +228,16 @@ export default function AdminCustomers() {
                                 <h3>Delete Customer</h3>
                                 <p>Deleting this customer will also remove their booking history.</p>
                             </div>
-                            <form
-                                method="POST"
+                            <ActionForm
                                 action={`/admin/customers/${selectedCustomer.id}`}
-                                onSubmit={(event) => {
-                                    if (!window.confirm(`Delete ${selectedCustomer.name}? This cannot be undone.`)) {
-                                        event.preventDefault();
-                                    }
-                                }}
+                                method="DELETE"
+                                confirmMessage={`Hapus ${selectedCustomer.name}? Data ini tidak dapat dikembalikan.`}
+                                confirmTitle="Hapus customer"
+                                confirmLabel="Hapus"
+                                danger
                             >
-                                <input type="hidden" name="_token" value={csrfToken} />
-                                <input type="hidden" name="_method" value="DELETE" />
-                                <button type="submit">Delete Customer</button>
-                            </form>
+                                Delete Customer
+                            </ActionForm>
                         </section>
                     </div>
                 </section>

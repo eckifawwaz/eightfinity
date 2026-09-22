@@ -1,8 +1,9 @@
 import React from 'react';
+import { consumeFormErrors } from '../../utils/pageState';
 import { csrfToken } from '../../utils/csrf';
 
 export default function UserVerifyEmail() {
-    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const formErrors = React.useMemo(() => consumeFormErrors(), []);
     const status = window.__FLASH_STATUS__;
     const email = window.__VERIFY_EMAIL__ ?? 'your email';
 

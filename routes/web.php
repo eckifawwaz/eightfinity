@@ -90,6 +90,7 @@ Route::middleware('portal:user')->group(function () {
             Route::match(['put', 'patch'], '/profile', [ProfileController::class, 'update'])->name('user.profile.update');
             Route::delete('/profile', [ProfileController::class, 'destroy'])->name('user.profile.destroy');
             Route::get('/book', [UserBookingController::class, 'create'])->name('user.book');
+            Route::get('/book/availability', [UserBookingController::class, 'availability'])->name('user.book.availability');
             Route::view('/packages/{slug}', 'react')->name('user.package-detail');
             Route::view('/payment', 'react')->name('user.payment');
             Route::post('/payment', [BookingPaymentController::class, 'store'])->name('user.payment.store');
@@ -102,6 +103,8 @@ Route::middleware('portal:user')->group(function () {
                 ->name('user.payment.success');
             Route::get('/payment/success/{booking}/data', [BookingPaymentController::class, 'successData'])
                 ->name('user.payment.success.data');
+            Route::get('/bookings/{booking}/receipt.pdf', [BookingPaymentController::class, 'receiptPdf'])
+                ->name('user.bookings.receipt.pdf');
             Route::patch('/bookings/{booking}/cancel', [BookingPaymentController::class, 'cancel'])
                 ->name('user.bookings.cancel');
             Route::delete('/bookings/{booking}', [BookingPaymentController::class, 'destroy'])
@@ -144,12 +147,11 @@ Route::middleware('portal:admin')->group(function () {
             ->name('admin.bookings.destroy');
         Route::get('/admin/queue', [AdminQueueController::class, 'index'])->name('admin.queue');
         Route::patch('/admin/queue/{booking}', [AdminQueueController::class, 'update'])->name('admin.queue.update');
-        Route::patch('/admin/queue/{booking}/photos', [AdminQueueController::class, 'incrementPhotos'])->name('admin.queue.photos');
         Route::patch('/admin/queue/{booking}/booth', [AdminQueueController::class, 'updateBooth'])->name('admin.queue.booth');
         Route::patch('/admin/queue/{booking}/equipment', [AdminQueueController::class, 'updateEquipment'])->name('admin.queue.equipment');
         Route::post('/admin/queue/{booking}/guests', [AdminQueueController::class, 'storeGuest'])->name('admin.queue.guests.store');
         Route::patch('/admin/queue/guests/{guest}/start', [AdminQueueController::class, 'startGuest'])->name('admin.queue.guests.start');
-        Route::patch('/admin/queue/guests/{guest}/move-next', [AdminQueueController::class, 'moveGuestNext'])->name('admin.queue.guests.move-next');
+        Route::delete('/admin/queue/guests/{guest}', [AdminQueueController::class, 'deleteGuest'])->name('admin.queue.guests.destroy');
         Route::patch('/admin/queue/guests/{guest}/complete', [AdminQueueController::class, 'completeGuest'])->name('admin.queue.guests.complete');
         Route::get('/admin/customers', [AdminCustomerController::class, 'index'])->name('admin.customers');
         Route::patch('/admin/customers/{user}', [AdminCustomerController::class, 'update'])->name('admin.customers.update');

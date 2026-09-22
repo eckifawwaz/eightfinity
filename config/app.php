@@ -72,6 +72,8 @@ return [
 
     'timezone' => 'UTC',
 
+    'booking_timezone' => env('BOOKING_TIMEZONE', 'Asia/Jakarta'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

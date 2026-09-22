@@ -40,6 +40,7 @@ class Booking extends Model
         'midtrans_transaction_id',
         'midtrans_payment_type',
         'midtrans_status',
+        'payment_expires_at',
         'photos_taken',
         'booth_paused',
         'equipment_status',
@@ -52,6 +53,7 @@ class Booking extends Model
         'photos_taken' => 'integer',
         'booth_paused' => 'boolean',
         'equipment_status' => 'array',
+        'payment_expires_at' => 'datetime',
     ];
 
     public const DEFAULT_EQUIPMENT_STATUS = [

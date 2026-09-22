@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { csrfToken } from '../../utils/csrf';
+import ActionForm from '../../components/ActionForm';
 
 const packageDurations = {
-    'Wedding Package': ['4 hours', '8 hours'],
-    'Reservation Package': ['4 hours', '4+1 hours'],
+    'Wedding Package': ['4 hours', '6 hours', '8 hours'],
+    'Reservation Package': ['3 hours', '4 hours', '5 hours'],
     'Unlimited Package': ['2 hours', '3 hours', '4 hours'],
 };
 
@@ -181,34 +182,29 @@ export default function AdminBookings() {
                                             </form>
                                             <div className="booking-row-actions">
                                                 {booking.status !== 'cancelled' && (
-                                                    <form
-                                                        method="POST"
+                                                    <ActionForm
                                                         action={`/admin/bookings/${booking.id}/status`}
-                                                        onSubmit={(event) => {
-                                                            if (!window.confirm('Cancel this booking?')) {
-                                                                event.preventDefault();
-                                                            }
-                                                        }}
+                                                        fields={{ status: 'cancelled' }}
+                                                        className="booking-cancel-button"
+                                                        confirmMessage="Batalkan booking ini?"
+                                                        confirmTitle="Batalkan booking"
+                                                        confirmLabel="Batalkan"
+                                                        danger
                                                     >
-                                                        <input type="hidden" name="_token" value={csrfToken} />
-                                                        <input type="hidden" name="_method" value="PATCH" />
-                                                        <input type="hidden" name="status" value="cancelled" />
-                                                        <button className="booking-cancel-button" type="submit">Cancel</button>
-                                                    </form>
+                                                        Cancel
+                                                    </ActionForm>
                                                 )}
-                                                <form
-                                                    method="POST"
+                                                <ActionForm
                                                     action={`/admin/bookings/${booking.id}`}
-                                                    onSubmit={(event) => {
-                                                        if (!window.confirm('Delete this booking permanently?')) {
-                                                            event.preventDefault();
-                                                        }
-                                                    }}
+                                                    method="DELETE"
+                                                    className="booking-delete-button"
+                                                    confirmMessage="Hapus booking ini secara permanen?"
+                                                    confirmTitle="Hapus booking"
+                                                    confirmLabel="Hapus"
+                                                    danger
                                                 >
-                                                    <input type="hidden" name="_token" value={csrfToken} />
-                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                    <button className="booking-delete-button" type="submit">Delete</button>
-                                                </form>
+                                                    Delete
+                                                </ActionForm>
                                             </div>
                                         </td>
                                     </tr>

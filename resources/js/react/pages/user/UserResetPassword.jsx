@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { consumeFormErrors } from '../../utils/pageState';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
 
 export default function UserResetPassword() {
     const { token } = useParams();
     const [searchParams] = useSearchParams();
-    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const formErrors = React.useMemo(() => consumeFormErrors(), []);
     const resetToken = window.__RESET_TOKEN__ ?? token ?? '';
     const resetEmail = window.__RESET_EMAIL__ ?? searchParams.get('email') ?? '';
     const [showPassword, setShowPassword] = useState(false);

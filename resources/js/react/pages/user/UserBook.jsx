@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
+import { consumeFormErrors } from '../../utils/pageState';
 
 const weddingFeatures = [
     'Unlimited photo session',
@@ -89,16 +90,21 @@ const roomSizes = ['3 x 3 meter', '4 x 4 meter', '5 x 5 meter'];
 function computeMinBookingDate() {
     const date = new Date();
     date.setDate(date.getDate() + 1);
-    return date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 const minBookingDate = computeMinBookingDate();
 
 export default function UserBook() {
     const [searchParams] = useSearchParams();
-    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const [formErrors] = useState(consumeFormErrors);
     const bookingAvailability = window.__BOOKING_AVAILABILITY__ ?? {};
-    const unavailableDates = bookingAvailability.unavailable_dates ?? [];
+    const [unavailableDates, setUnavailableDates] = useState(() => bookingAvailability.unavailable_dates ?? []);
+    const [checkingAvailability, setCheckingAvailability] = useState(false);
+    const [availabilityNotice, setAvailabilityNotice] = useState('');
     const initialSlug = packages[searchParams.get('package')] ? searchParams.get('package') : 'wedding';
     const initialOption = Number(searchParams.get('option')) || 0;
     const rescheduleId = searchParams.get('reschedule');
@@ -133,6 +139,59 @@ export default function UserBook() {
     function selectPackage(slug) {
         setSelectedSlug(slug);
         setSelectedOption(0);
+    }
+
+    useEffect(() => {
+        let active = true;
+        const query = new URLSearchParams();
+        if (rescheduleId) query.set('reschedule', rescheduleId);
+
+        fetch(`/book/availability?${query.toString()}`, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (active && data?.unavailable_dates) setUnavailableDates(data.unavailable_dates);
+            })
+            .catch(() => {});
+
+        return () => { active = false; };
+    }, [rescheduleId]);
+
+    async function verifySelectedDate(selectedDate = date) {
+        if (!selectedDate) return false;
+        const query = new URLSearchParams({ date: selectedDate });
+        if (rescheduleId) query.set('reschedule', rescheduleId);
+
+        try {
+            const response = await fetch(`/book/availability?${query.toString()}`, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) return !unavailableDates.includes(selectedDate);
+            const data = await response.json();
+            if (Array.isArray(data.unavailable_dates)) setUnavailableDates(data.unavailable_dates);
+            return data.available !== false;
+        } catch {
+            return !unavailableDates.includes(selectedDate);
+        }
+    }
+
+    async function continueToPayment() {
+        if (!isComplete || checkingAvailability) return;
+        setCheckingAvailability(true);
+        setAvailabilityNotice('');
+        const available = await verifySelectedDate();
+        setCheckingAvailability(false);
+
+        if (!available) {
+            setAvailabilityNotice('Tanggal tersebut sudah penuh. Silakan pilih tanggal lain.');
+            return;
+        }
+
+        // Full navigation intentionally resets one-time Laravel validation state.
+        window.location.assign(paymentUrl);
     }
 
     return (
@@ -234,7 +293,12 @@ export default function UserBook() {
                             aria-invalid={isDateUnavailable}
                             value={date}
                             min={minBookingDate}
-                            onChange={(event) => setDate(event.target.value)}
+                            onChange={(event) => {
+                                const nextDate = event.target.value;
+                                setDate(nextDate);
+                                setAvailabilityNotice('');
+                                if (nextDate) verifySelectedDate(nextDate);
+                            }}
                             type="date"
                         />
                     </label>
@@ -246,10 +310,10 @@ export default function UserBook() {
                     </label>
                 </div>
 
-                {isDateUnavailable && (
+                {(isDateUnavailable || availabilityNotice) && (
                     <section className="booking-date-warning">
-                        <strong>Tanggal ini sudah penuh</strong>
-                        <p>Pilih tanggal lain untuk melanjutkan.</p>
+                        <strong>Tanggal tidak tersedia</strong>
+                        <p>{availabilityNotice || 'Tanggal tersebut sudah penuh. Silakan pilih tanggal lain untuk melanjutkan.'}</p>
                     </section>
                 )}
 
@@ -339,16 +403,15 @@ export default function UserBook() {
                         </button>
                     </form>
                 ) : (
-                    <Link
-                        aria-disabled={!isComplete}
-                        className={`continue-payment ${!isComplete ? 'disabled' : ''}`}
-                        onClick={(event) => {
-                            if (!isComplete) event.preventDefault();
-                        }}
-                        to={paymentUrl}
+                    <button
+                        aria-disabled={!isComplete || checkingAvailability}
+                        className={`continue-payment ${!isComplete || checkingAvailability ? 'disabled' : ''}`}
+                        disabled={!isComplete || checkingAvailability}
+                        onClick={continueToPayment}
+                        type="button"
                     >
-                        Continue To Payment
-                    </Link>
+                        {checkingAvailability ? 'Checking Date...' : 'Continue To Payment'}
+                    </button>
                 )}
             </section>
 

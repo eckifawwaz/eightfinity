@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { consumeFormErrors } from '../../utils/pageState';
 import { Link } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
 
@@ -47,7 +48,7 @@ export default function AdminProfile() {
     const profile = window.__ADMIN_PROFILE__ ?? {};
     const admin = profile.user ?? {};
     const preferences = profile.notification_preferences ?? {};
-    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const formErrors = React.useMemo(() => consumeFormErrors(), []);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [desktopToasts, setDesktopToasts] = useState(preferences.desktop_toasts ?? true);
     const twoFactor = Boolean(admin.two_factor_enabled);

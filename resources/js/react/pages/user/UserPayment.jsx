@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
+import { consumeFormErrors } from '../../utils/pageState';
 
 const packages = {
     wedding: {
@@ -69,7 +70,7 @@ function buildQrPattern(value) {
 
 export default function UserPayment() {
     const [params] = useSearchParams();
-    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const [formErrors] = useState(consumeFormErrors);
     const packageSlug = packages[params.get('package')] ? params.get('package') : 'wedding';
     const optionIndex = Number(params.get('option')) || 0;
     const selectedPackage = packages[packageSlug];
@@ -86,6 +87,34 @@ export default function UserPayment() {
     const qrPattern = useMemo(() => buildQrPattern(paymentPayload), [paymentPayload]);
     const qrExpiry = '00 : 15 : 00';
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [dateUnavailable, setDateUnavailable] = useState(false);
+    const [availabilityChecking, setAvailabilityChecking] = useState(true);
+    const selectedDate = params.get('date');
+
+    useEffect(() => {
+        let active = true;
+        if (!selectedDate) {
+            setAvailabilityChecking(false);
+            return undefined;
+        }
+
+        const query = new URLSearchParams({ date: selectedDate });
+        fetch(`/book/availability?${query.toString()}`, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (!active) return;
+                setDateUnavailable(data?.available === false);
+                setAvailabilityChecking(false);
+            })
+            .catch(() => {
+                if (active) setAvailabilityChecking(false);
+            });
+
+        return () => { active = false; };
+    }, [selectedDate]);
 
     function downloadQr() {
         const svg = document.querySelector('.payment-qr-code svg');
@@ -119,7 +148,13 @@ export default function UserPayment() {
                 <i className="book-dot dot-c" /><i className="book-dot dot-d" /><i className="book-dot dot-e" />
             </section>
 
-            <form action="/payment" method="POST" onSubmit={() => setIsSubmitting(true)}>
+            <form action="/payment" method="POST" onSubmit={(event) => {
+                if (dateUnavailable || availabilityChecking || isSubmitting) {
+                    event.preventDefault();
+                    return;
+                }
+                setIsSubmitting(true);
+            }}>
                 <input type="hidden" name="_token" value={csrfToken} />
                 <input type="hidden" name="package" value={packageSlug} />
                 <input type="hidden" name="option" value={optionIndex} />
@@ -155,6 +190,13 @@ export default function UserPayment() {
                     </aside>
 
                     <section className="user-payment-main">
+                        {dateUnavailable && (
+                            <section className="payment-error-card">
+                                <strong>Tanggal booking sudah penuh</strong>
+                                <p>Booking lain sudah lebih dulu menggunakan tanggal ini. Silakan kembali dan pilih tanggal lain.</p>
+                                <Link to="/book">Pilih Tanggal Lain</Link>
+                            </section>
+                        )}
                         {formErrors.length > 0 && (
                             <section className="payment-error-card">
                                 <strong>Payment could not be submitted</strong>
@@ -190,8 +232,8 @@ export default function UserPayment() {
                                         </dl>
                                     </div>
 
-                                    <button className="complete-payment-button" disabled={isSubmitting} type="submit">
-                                        {isSubmitting ? (
+                                    <button className="complete-payment-button" disabled={isSubmitting || dateUnavailable || availabilityChecking} type="submit">
+                                        {availabilityChecking ? 'Checking availability...' : isSubmitting ? (
                                             <>
                                                 <i className="button-spinner" />
                                                 Menghubungkan ke pembayaran...

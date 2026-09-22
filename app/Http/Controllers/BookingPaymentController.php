@@ -2,22 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
 use App\Mail\AdminBookingNotificationMail;
+use App\Models\Booking;
 use App\Support\AdminNotifier;
+use App\Support\BookingLifecycle;
+use App\Support\MidtransBookingService;
+use App\Support\SimpleReceiptPdf;
 use Exception;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Midtrans\Config as MidtransConfig;
-use Midtrans\Notification as MidtransNotification;
 use Midtrans\Snap;
-use Midtrans\Transaction as MidtransTransaction;
 
 class BookingPaymentController extends Controller
 {
@@ -38,12 +40,12 @@ class BookingPaymentController extends Controller
 
     private const ROOM_SIZES = ['3 x 3 meter', '4 x 4 meter', '5 x 5 meter'];
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, MidtransBookingService $midtrans): RedirectResponse
     {
         $validated = $request->validate([
             'package' => ['required', 'in:wedding,reservation,unlimited'],
             'option' => ['required', 'integer', 'min:0'],
-            'date' => ['required', 'date', 'after:today'],
+            'date' => ['required', 'date', 'after:'.now(BookingLifecycle::timezone())->toDateString()],
             'time' => ['required', 'date_format:H:i'],
             'booth_size' => ['required', 'in:'.implode(',', self::ROOM_SIZES)],
             'address' => ['required', 'string', 'max:1000'],
@@ -55,37 +57,61 @@ class BookingPaymentController extends Controller
 
         $package = self::PACKAGES[$validated['package']];
         $option = (int) $validated['option'];
-
         abort_unless(isset($package['prices'][$option]), 422, 'Invalid package option.');
-        $this->ensureBookingDateIsAvailable($validated['date']);
 
-        $booking = Booking::create([
-            'user_id' => $request->user()->id,
-            'booking_code' => $this->generateBookingCode(),
-            'package_slug' => $validated['package'],
-            'package_name' => $package['name'],
-            'package_option' => $option,
-            'booking_date' => $validated['date'],
-            'booking_time' => $validated['time'],
-            'booth_size' => $validated['booth_size'],
-            'people' => 0, // no longer collected from the customer; column is NOT NULL
-            'customer_address' => $validated['address'],
-            'booking_location' => $validated['location'],
-            'amount' => $package['prices'][$option],
-            'payment_method' => $validated['payment_method'],
-            'payment_provider' => $validated['payment_provider'],
-            'payment_proof' => $request->file('payment_proof')?->store('payment-proofs'),
-            'status' => 'pending',
-        ]);
+        $lock = Cache::lock('booking-date:'.$validated['date'], 10);
+
+        try {
+            $booking = $lock->block(5, function () use ($request, $validated, $package, $option, $midtrans) {
+                Booking::query()
+                    ->whereDate('booking_date', $validated['date'])
+                    ->where('status', 'pending')
+                    ->get()
+                    ->each(fn (Booking $booking) => $midtrans->sync($booking));
+
+                $this->ensureBookingDateIsAvailable($validated['date']);
+
+                return Booking::create([
+                    'user_id' => $request->user()->id,
+                    'booking_code' => $this->generateBookingCode(),
+                    'package_slug' => $validated['package'],
+                    'package_name' => $package['name'],
+                    'package_option' => $option,
+                    'booking_date' => $validated['date'],
+                    'booking_time' => $validated['time'],
+                    'booth_size' => $validated['booth_size'],
+                    'people' => 0,
+                    'customer_address' => $validated['address'],
+                    'booking_location' => $validated['location'],
+                    'amount' => $package['prices'][$option],
+                    'payment_method' => $validated['payment_method'],
+                    'payment_provider' => $validated['payment_provider'],
+                    'payment_proof' => $request->file('payment_proof')?->store('payment-proofs'),
+                    'payment_expires_at' => now()->addDay(),
+                    'status' => 'pending',
+                ]);
+            });
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages([
+                'date' => 'Tanggal sedang diproses oleh pengguna lain. Silakan coba lagi.',
+            ]);
+        }
 
         $this->notifyAdmins($booking);
 
-        if ($this->hasMidtransKeys()) {
-            return redirect()->away($this->createMidtransPaymentUrl($booking));
+        if ($midtrans->configured()) {
+            return redirect()->away($this->createMidtransPaymentUrl($booking, $midtrans));
         }
 
         if ($paymentLink = $this->paymentLinkFor($booking)) {
             return redirect()->away($paymentLink);
+        }
+
+        // Legacy/manual proof flow remains usable when Midtrans is intentionally disabled.
+        if ($booking->payment_proof) {
+            return redirect()->route('user.payment.success', $booking);
         }
 
         throw ValidationException::withMessages([
@@ -107,14 +133,9 @@ class BookingPaymentController extends Controller
         return config("services.midtrans.payment_links.{$booking->package_slug}.{$booking->package_option}");
     }
 
-    private function hasMidtransKeys(): bool
+    private function createMidtransPaymentUrl(Booking $booking, MidtransBookingService $midtrans): string
     {
-        return filled(config('services.midtrans.server_key'));
-    }
-
-    private function createMidtransPaymentUrl(Booking $booking): string
-    {
-        $this->configureMidtrans();
+        $midtrans->configure();
 
         $orderId = $booking->booking_code;
         $params = [
@@ -148,7 +169,7 @@ class BookingPaymentController extends Controller
 
             throw ValidationException::withMessages([
                 'payment' => str_contains($exception->getMessage(), '401')
-                    ? 'Midtrans menolak Server Key. Copy ulang Sandbox Server Key dari dashboard Midtrans, lalu jalankan php artisan config:clear.'
+                    ? 'Midtrans menolak Server Key. Periksa kembali Server Key lalu jalankan php artisan config:clear.'
                     : 'Gagal membuat transaksi Midtrans. Cek konfigurasi Server Key dan coba lagi.',
             ]);
         }
@@ -163,21 +184,12 @@ class BookingPaymentController extends Controller
         return $transaction->redirect_url;
     }
 
-    private function configureMidtrans(): void
+    public function notification(Request $request, MidtransBookingService $midtrans): JsonResponse
     {
-        MidtransConfig::$serverKey = config('services.midtrans.server_key');
-        MidtransConfig::$clientKey = config('services.midtrans.client_key');
-        MidtransConfig::$isProduction = filter_var(config('services.midtrans.is_production'), FILTER_VALIDATE_BOOLEAN);
-        MidtransConfig::$isSanitized = true;
-        MidtransConfig::$is3ds = true;
-    }
-
-    public function notification(Request $request): JsonResponse
-    {
-        $this->configureMidtrans();
+        $midtrans->configure();
 
         try {
-            $notification = new MidtransNotification();
+            $notification = new \Midtrans\Notification();
         } catch (Exception $exception) {
             Log::error('Midtrans notification verification failed', [
                 'message' => $exception->getMessage(),
@@ -193,39 +205,14 @@ class BookingPaymentController extends Controller
             ->first();
 
         if (! $booking) {
-            Log::warning('Midtrans notification booking not found', [
-                'order_id' => $notification->order_id,
-            ]);
+            Log::warning('Midtrans notification booking not found', ['order_id' => $notification->order_id]);
 
             return response()->json(['message' => 'Booking not found'], 404);
         }
 
-        $status = $this->bookingStatusFromMidtrans($notification->transaction_status);
-
-        $booking->update([
-            'status' => $status,
-            'payment_method' => $notification->payment_type ?? $booking->payment_method,
-            'payment_provider' => $notification->payment_type ?? $booking->payment_provider,
-            'midtrans_transaction_id' => $notification->transaction_id,
-            'midtrans_payment_type' => $notification->payment_type,
-            'midtrans_status' => $notification->transaction_status,
-        ]);
+        $midtrans->apply($booking, $notification);
 
         return response()->json(['message' => 'OK']);
-    }
-
-    /**
-     * Payment success never auto-confirms a booking; admin must confirm manually
-     * after reviewing. Only cancel/expire/refund outcomes move the status.
-     */
-    private function bookingStatusFromMidtrans(?string $transactionStatus): string
-    {
-        return match ($transactionStatus) {
-            'cancel', 'deny', 'failure' => 'cancelled',
-            'expire' => 'expired',
-            'refund', 'partial_refund' => 'refunded',
-            default => 'pending',
-        };
     }
 
     private function notifyAdmins(Booking $booking): void
@@ -235,18 +222,28 @@ class BookingPaymentController extends Controller
 
     public function success(Request $request, Booking $booking): View
     {
-        abort_unless($booking->user_id === $request->user()->id, 403);
+        $this->authorizeOwner($request, $booking);
 
-        return view('react', [
-            'booking' => $this->successPayload($booking),
-        ]);
+        return view('react', ['booking' => $this->successPayload($booking)]);
     }
 
     public function successData(Request $request, Booking $booking): JsonResponse
     {
-        abort_unless($booking->user_id === $request->user()->id, 403);
+        $this->authorizeOwner($request, $booking);
 
         return response()->json($this->successPayload($booking));
+    }
+
+    public function receiptPdf(Request $request, Booking $booking): Response
+    {
+        $this->authorizeOwner($request, $booking);
+        $filename = 'eightfinity-receipt-'.$booking->booking_code.'.pdf';
+
+        return response(SimpleReceiptPdf::make($booking), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ]);
     }
 
     private function successPayload(Booking $booking): array
@@ -257,6 +254,7 @@ class BookingPaymentController extends Controller
             $booking->only([
                 'id',
                 'booking_code',
+                'package_slug',
                 'package_name',
                 'package_option',
                 'booking_date',
@@ -266,52 +264,43 @@ class BookingPaymentController extends Controller
                 'booking_location',
                 'amount',
                 'status',
+                'midtrans_status',
+                'midtrans_payment_type',
             ]),
-            ['customer_name' => $booking->user?->name ?? '-'],
+            [
+                'customer_name' => $booking->user?->name ?? '-',
+                'duration_hours' => BookingLifecycle::durationHours($booking),
+                'team_arrival_time' => BookingLifecycle::teamArrivalTime($booking),
+                'reschedule_available' => BookingLifecycle::canReschedule($booking),
+            ],
         );
     }
 
-    public function paymentFinish(Request $request, Booking $booking): RedirectResponse
+    public function paymentFinish(Request $request, Booking $booking, MidtransBookingService $midtrans): RedirectResponse
     {
-        abort_unless($booking->user_id === $request->user()->id, 403);
+        $this->authorizeOwner($request, $booking);
 
         if ($booking->status === 'pending' && $booking->midtrans_order_id) {
-            $this->refreshBookingFromMidtrans($booking);
+            $booking = $midtrans->sync($booking);
         }
 
-        if (in_array($booking->status, ['confirmed', 'completed'], true)) {
+        $requestStatus = $request->query('transaction_status');
+        $paid = in_array($booking->midtrans_status, ['settlement', 'capture'], true)
+            || in_array($requestStatus, ['settlement', 'capture'], true)
+            || in_array($booking->status, ['confirmed', 'completed'], true);
+
+        if ($paid) {
             return redirect()->route('user.payment.success', $booking);
         }
 
         return redirect()->route('user.profile');
     }
 
-    private function refreshBookingFromMidtrans(Booking $booking): void
+    public function continuePayment(Request $request, Booking $booking, MidtransBookingService $midtrans): RedirectResponse
     {
-        $this->configureMidtrans();
+        $this->authorizeOwner($request, $booking);
+        $booking = $midtrans->sync($booking);
 
-        try {
-            $status = MidtransTransaction::status($booking->midtrans_order_id);
-        } catch (Exception $exception) {
-            Log::warning('Midtrans status check failed on payment finish', [
-                'booking_id' => $booking->id,
-                'message' => $exception->getMessage(),
-            ]);
-
-            return;
-        }
-
-        $booking->update([
-            'status' => $this->bookingStatusFromMidtrans($status->transaction_status ?? null),
-            'midtrans_transaction_id' => $status->transaction_id ?? $booking->midtrans_transaction_id,
-            'midtrans_payment_type' => $status->payment_type ?? $booking->midtrans_payment_type,
-            'midtrans_status' => $status->transaction_status ?? $booking->midtrans_status,
-        ]);
-    }
-
-    public function continuePayment(Request $request, Booking $booking): RedirectResponse
-    {
-        abort_unless($booking->user_id === $request->user()->id, 403);
         abort_unless($booking->status === 'pending', 422, 'This booking is no longer awaiting payment.');
         abort_if(
             in_array($booking->midtrans_status, ['settlement', 'capture'], true),
@@ -342,7 +331,7 @@ class BookingPaymentController extends Controller
 
         if (! filter_var(config('services.midtrans.is_production'), FILTER_VALIDATE_BOOLEAN)) {
             $booking->update([
-                'status' => 'confirmed',
+                'status' => 'pending',
                 'midtrans_status' => 'settlement',
             ]);
         }
@@ -352,24 +341,18 @@ class BookingPaymentController extends Controller
 
     public function cancel(Request $request, Booking $booking): RedirectResponse
     {
-        abort_unless($booking->user_id === $request->user()->id, 403);
+        $this->authorizeOwner($request, $booking);
         abort(422, 'Bookings can no longer be self-cancelled. Please contact admin.');
-    }
-
-    private function isWithinModifiableWindow(Booking $booking): bool
-    {
-        return Carbon::now()->addDays(3)->lte($this->eventStart($booking));
-    }
-
-    private function eventStart(Booking $booking): Carbon
-    {
-        return Carbon::parse($booking->booking_date->format('Y-m-d').' '.$booking->booking_time);
     }
 
     public function destroy(Request $request, Booking $booking): RedirectResponse
     {
-        abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_unless(in_array($booking->status, ['cancelled', 'completed', 'expired'], true), 422, 'Only cancelled, completed, or expired bookings can be deleted.');
+        $this->authorizeOwner($request, $booking);
+        abort_unless(
+            in_array($booking->status, ['cancelled', 'completed', 'expired', 'refunded'], true),
+            422,
+            'Only cancelled, completed, expired, or refunded bookings can be deleted.'
+        );
 
         $booking->delete();
 
@@ -378,34 +361,57 @@ class BookingPaymentController extends Controller
 
     public function reschedule(Request $request, Booking $booking): RedirectResponse
     {
-        abort_unless($booking->user_id === $request->user()->id, 403);
-        abort_if(in_array($booking->status, ['completed', 'cancelled', 'expired'], true), 422, 'This booking cannot be rescheduled.');
-        abort_if($booking->status === 'confirmed', 422, 'This booking is already confirmed by admin. Please contact admin to reschedule.');
+        $this->authorizeOwner($request, $booking);
         abort_if(
-            in_array($booking->midtrans_status, ['settlement', 'capture'], true),
+            in_array($booking->status, ['completed', 'cancelled', 'expired', 'refunded'], true),
             422,
-            'This booking has already been paid and is awaiting admin confirmation. Please contact admin to reschedule.'
+            'This booking cannot be rescheduled.'
         );
-        abort_unless($this->isWithinModifiableWindow($booking), 422, 'Bookings can only be rescheduled up to 3 days before the event.');
+        abort_unless(
+            BookingLifecycle::canReschedule($booking),
+            422,
+            'Reschedule hanya tersedia sebelum memasuki H-3 dari hari booking.'
+        );
 
         $validated = $request->validate([
-            'date' => ['required', 'date', 'after:today'],
+            'date' => ['required', 'date', 'after:'.now(BookingLifecycle::timezone())->toDateString()],
             'time' => ['required', 'date_format:H:i'],
             'booth_size' => ['required', 'in:'.implode(',', self::ROOM_SIZES)],
             'address' => ['required', 'string', 'max:1000'],
             'location' => ['required', 'string', 'max:255'],
         ]);
 
-        $this->ensureBookingDateIsAvailable($validated['date'], $booking);
+        $lock = Cache::lock('booking-date:'.$validated['date'], 10);
 
-        $booking->update([
-            'booking_date' => $validated['date'],
-            'booking_time' => $validated['time'],
-            'booth_size' => $validated['booth_size'],
-            'customer_address' => $validated['address'],
-            'booking_location' => $validated['location'],
-            'status' => 'pending',
-        ]);
+        try {
+            $lock->block(5, function () use ($validated, $booking) {
+                Booking::query()
+                    ->whereDate('booking_date', $validated['date'])
+                    ->where('status', 'pending')
+                    ->whereKeyNot($booking->id)
+                    ->get()
+                    ->each(fn (Booking $candidate) => app(MidtransBookingService::class)->sync($candidate));
+
+                $this->ensureBookingDateIsAvailable($validated['date'], $booking);
+
+                $booking->update([
+                    'booking_date' => $validated['date'],
+                    'booking_time' => $validated['time'],
+                    'booth_size' => $validated['booth_size'],
+                    'customer_address' => $validated['address'],
+                    'booking_location' => $validated['location'],
+                    // Paid bookings are not charged again. A previously confirmed booking
+                    // returns to pending only so admin can acknowledge the new schedule.
+                    'status' => $booking->status === 'confirmed' ? 'pending' : $booking->status,
+                ]);
+            });
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages([
+                'date' => 'Tanggal sedang diproses oleh pengguna lain. Silakan coba lagi.',
+            ]);
+        }
 
         return redirect()->route('user.profile')->with('status', 'booking-rescheduled');
     }
@@ -414,18 +420,21 @@ class BookingPaymentController extends Controller
     {
         $query = Booking::query()
             ->whereDate('booking_date', $date)
-            ->whereNotIn('status', ['cancelled', 'expired']);
+            ->whereNotIn('status', ['cancelled', 'expired', 'refunded']);
 
         if ($ignoredBooking) {
             $query->whereKeyNot($ignoredBooking->id);
         }
 
-        if (! $query->exists()) {
-            return;
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'date' => 'Tanggal tersebut sudah penuh. Silakan pilih tanggal lain.',
+            ]);
         }
+    }
 
-        throw ValidationException::withMessages([
-            'date' => 'Tanggal tersebut sudah penuh.',
-        ]);
+    private function authorizeOwner(Request $request, Booking $booking): void
+    {
+        abort_unless($booking->user_id === $request->user()->id, 403);
     }
 }

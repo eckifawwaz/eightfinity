@@ -18,6 +18,7 @@ import AdminProfile from './pages/admin/AdminProfile';
 import AdminQueue from './pages/admin/AdminQueue';
 import AdminRevenue from './pages/admin/AdminRevenue';
 import AdminTwoFactor from './pages/admin/AdminTwoFactor';
+import SubmitOnceGuard from './components/SubmitOnceGuard';
 import UserBook from './pages/user/UserBook';
 import UserHome from './pages/user/UserHome';
 import UserPackageDetail from './pages/user/UserPackageDetail';
@@ -54,6 +55,7 @@ function FloatingBackButton() {
 function App() {
     return (
         <BrowserRouter>
+            <SubmitOnceGuard />
             <Routes>
                 <Route path="/" element={<Navigate to="/register" replace />} />
                 <Route path="/login" element={<UserSignIn />} />

@@ -38,9 +38,11 @@ return [
         'payment_links' => [
             'wedding' => [
                 env('MIDTRANS_WEDDING_4_HOURS_PAYMENT_LINK', env('MIDTRANS_WEDDING_PAYMENT_LINK')),
+                env('MIDTRANS_WEDDING_6_HOURS_PAYMENT_LINK', env('MIDTRANS_WEDDING_PAYMENT_LINK')),
                 env('MIDTRANS_WEDDING_8_HOURS_PAYMENT_LINK', env('MIDTRANS_WEDDING_PAYMENT_LINK')),
             ],
             'reservation' => [
+                env('MIDTRANS_RESERVATION_3_HOURS_PAYMENT_LINK'),
                 env('MIDTRANS_RESERVATION_4_HOURS_PAYMENT_LINK'),
                 env('MIDTRANS_RESERVATION_4_PLUS_1_HOURS_PAYMENT_LINK'),
             ],

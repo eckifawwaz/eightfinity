@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { consumeFormErrors } from '../../utils/pageState';
 import { csrfToken } from '../../utils/csrf';
 
 export default function UserSignUp() {
-    const formErrors = window.__FORM_ERRORS__ ?? [];
+    const formErrors = React.useMemo(() => consumeFormErrors(), []);
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
 

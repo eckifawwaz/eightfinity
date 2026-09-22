@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import SocialLinks from '../../components/SocialLinks';
-import { buildReceiptHtml } from '../../utils/receipt';
 import { flowSteps } from '../../utils/experienceFlow';
+import { socialLinks } from '../../utils/socialLinks';
 
 const packageDurations = {
-    'Wedding Package': ['4 hours', '8 hours'],
-    'Reservation Package': ['4 hours', '4+1 hours'],
+    'Wedding Package': ['4 hours', '6 hours', '8 hours'],
+    'Reservation Package': ['3 hours', '4 hours', '5 hours'],
     'Unlimited Package': ['2 hours', '3 hours', '4 hours'],
 };
 
@@ -75,21 +75,18 @@ export default function UserPaymentSuccess() {
 
     const isLoadingBooking = !booking && !loadError;
     const activeBooking = booking ?? {};
-    const duration = packageDurations[activeBooking.package_name]?.[activeBooking.package_option] ?? '-';
+    const duration = activeBooking.duration_hours
+        ? `${activeBooking.duration_hours} hours`
+        : (packageDurations[activeBooking.package_name]?.[activeBooking.package_option] ?? '-');
     const bookingCode = activeBooking.booking_code ?? 'receipt';
-
-    function downloadReceipt() {
-        const logoUrl = `${window.location.origin}/image/logo-wordmark.png`;
-        const receipt = buildReceiptHtml(activeBooking, logoUrl);
-
-        const blob = new Blob([receipt], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `eightfinity-receipt-${bookingCode}.html`;
-        link.click();
-        URL.revokeObjectURL(url);
-    }
+    const adminWhatsappBase = socialLinks.whatsapp.split('?')[0];
+    const rescheduleMessage = [
+        'Halo Admin EightFinity, saya ingin mengajukan reschedule booking.',
+        `Booking ID: #${bookingCode}`,
+        `Jadwal saat ini: ${formatDate(activeBooking.booking_date)} ${activeBooking.booking_time ?? ''}`,
+        'Mohon dibantu untuk perubahan jadwal. Terima kasih.',
+    ].join('\n');
+    const rescheduleWhatsappUrl = `${adminWhatsappBase}?text=${encodeURIComponent(rescheduleMessage)}`;
 
     return (
         <main className="user-book-page payment-success-page">
@@ -108,14 +105,13 @@ export default function UserPaymentSuccess() {
                     <p>Your payment has been processed successfully. Get ready for an amazing photo session!</p>
                     <div className="payment-confirm-actions">
                         <Link className="payment-confirm-primary" to="/profile">Check Your Booking</Link>
-                        <button
-                            className="payment-confirm-secondary"
-                            onClick={downloadReceipt}
-                            type="button"
-                            disabled={isLoadingBooking}
+                        <a
+                            className={`payment-confirm-secondary ${isLoadingBooking ? 'disabled' : ''}`}
+                            href={isLoadingBooking ? undefined : `/bookings/${bookingId}/receipt.pdf`}
+                            aria-disabled={isLoadingBooking}
                         >
-                            ↓ Download Receipt
-                        </button>
+                            ↓ Download Receipt PDF
+                        </a>
                     </div>
                     {loadError && <p className="payment-confirm-error">{loadError}</p>}
                 </div>
@@ -154,6 +150,18 @@ export default function UserPaymentSuccess() {
                         <small className="payment-reschedule-note">
                             Silahkan hubungi admin untuk reschedule maksimal H-3 sebelum hari-H.
                         </small>
+                        {activeBooking.reschedule_available ? (
+                            <a
+                                className="payment-reschedule-contact-button"
+                                href={rescheduleWhatsappUrl}
+                                rel="noreferrer"
+                                target="_blank"
+                            >
+                                Hubungi Admin untuk Reschedule
+                            </a>
+                        ) : (
+                            <span className="payment-reschedule-closed">Reschedule sudah tidak tersedia karena telah memasuki H-3.</span>
+                        )}
                     </article>
 
                     <article className="payment-detail-card">
@@ -177,7 +185,7 @@ export default function UserPaymentSuccess() {
                             </div>
                             <div>
                                 <dt>Venue Setup Instructions</dt>
-                                <dd>Our team will arrive 1 hour early (13:00) for equipment and backdrop installation.</dd>
+                                <dd>Our team will arrive 1 hour early ({activeBooking.team_arrival_time ?? '-'}) for equipment and backdrop installation.</dd>
                             </div>
                         </dl>
                         <div className="payment-note">

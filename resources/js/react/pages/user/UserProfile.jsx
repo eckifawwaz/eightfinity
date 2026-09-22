@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { csrfToken } from '../../utils/csrf';
 import SocialLinks from '../../components/SocialLinks';
+import ActionForm from '../../components/ActionForm';
 
 const packageDurations = {
-    'Wedding Package': ['4 hours', '8 hours'],
-    'Reservation Package': ['4 hours', '4+1 hours'],
+    'Wedding Package': ['4 hours', '6 hours', '8 hours'],
+    'Reservation Package': ['3 hours', '4 hours', '5 hours'],
     'Unlimited Package': ['2 hours', '3 hours', '4 hours'],
 };
 
@@ -45,6 +46,41 @@ function statusLabel(booking) {
     if (booking.status === 'cancelled') return 'Cancelled';
     if (booking.status === 'completed') return 'Completed';
     return 'Confirmed';
+}
+
+function PaymentCountdown({ booking }) {
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        if (booking.status !== 'pending' || isPaidAwaitingConfirmation(booking)) return undefined;
+        const timer = window.setInterval(() => setNow(Date.now()), 1000);
+        return () => window.clearInterval(timer);
+    }, [booking.status, booking.midtrans_status]);
+
+    if (booking.status !== 'pending') return null;
+    if (isPaidAwaitingConfirmation(booking)) {
+        return <div className="profile-payment-countdown paid">Pembayaran selesai • menunggu konfirmasi admin</div>;
+    }
+
+    const target = booking.effective_payment_expires_at ? new Date(booking.effective_payment_expires_at).getTime() : null;
+    if (!target || Number.isNaN(target)) return null;
+
+    const remaining = Math.max(0, target - now);
+    const totalSeconds = Math.floor(remaining / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const clock = `${days > 0 ? `${days}d ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const paymentType = booking.midtrans_payment_type?.toUpperCase();
+    const label = paymentType ? `Sisa waktu pembayaran ${paymentType}` : 'Batas memilih metode pembayaran';
+
+    return (
+        <div className={`profile-payment-countdown ${remaining === 0 ? 'expired' : ''}`}>
+            <span>{label}</span>
+            <strong>{remaining === 0 ? 'Waktu pembayaran habis' : clock}</strong>
+        </div>
+    );
 }
 
 export default function UserProfile() {
@@ -151,10 +187,6 @@ export default function UserProfile() {
                         </article>
                     ) : bookings.length ? bookings.map((booking) => {
                         const duration = packageDurations[booking.package_name]?.[booking.package_option] ?? '-';
-                        const rebookParams = new URLSearchParams({
-                            package: booking.package_slug ?? '',
-                            option: String(booking.package_option ?? 0),
-                        });
                         const rescheduleParams = new URLSearchParams({
                             reschedule: String(booking.id),
                             package: booking.package_slug ?? '',
@@ -169,13 +201,8 @@ export default function UserProfile() {
                         const isCompleted = booking.status === 'completed';
                         const isPending = booking.status === 'pending' && !isPaidAwaitingConfirmation(booking);
                         const isExpired = booking.status === 'expired';
-                        const daysUntilEvent = Math.ceil(
-                            (new Date(booking.booking_date) - new Date()) / (1000 * 60 * 60 * 24),
-                        );
-                        const withinRescheduleWindow = daysUntilEvent >= 3;
-                        const canReschedule = isPending && withinRescheduleWindow;
-                        const canDelete = isCancelled || isCompleted || isExpired;
-                        const showRebook = !canReschedule && !canDelete;
+                        const canReschedule = Boolean(booking.reschedule_available);
+                        const canDelete = isCancelled || isCompleted || isExpired || booking.status === 'refunded';
 
                         return (
                             <article className="profile-booking-card" key={booking.booking_code}>
@@ -195,18 +222,20 @@ export default function UserProfile() {
                                 <p>▣ {formatDate(booking.booking_date)} • {booking.booking_time}</p>
                                 <p>⌖ {booking.booking_location ?? '-'} • {booking.booth_size ?? '3 x 3 meter'}</p>
                                 <p>◇ {duration} • {currency.format(booking.amount ?? 0)}</p>
-                                <p>□ {(booking.payment_method ?? '-').toUpperCase()} • {(booking.payment_provider ?? '-').toUpperCase()}</p>
+                                <p>□ {(booking.midtrans_payment_type ?? booking.payment_method ?? '-').toUpperCase()} • {(booking.payment_provider ?? '-').toUpperCase()}</p>
+                                <PaymentCountdown booking={booking} />
                                 <div>
                                     {!isPending && !isExpired && (
                                         <Link to={`/payment/success/${booking.id}`}>View Receipt</Link>
                                     )}
                                     {isPending && (
-                                        <form method="POST" action={`/bookings/${booking.id}/continue-payment`}>
-                                            <input type="hidden" name="_token" value={csrfToken} />
-                                            <button className="profile-continue-payment-button" type="submit">
-                                                Lanjut Bayar
-                                            </button>
-                                        </form>
+                                        <ActionForm
+                                            action={`/bookings/${booking.id}/continue-payment`}
+                                            method="POST"
+                                            className="profile-continue-payment-button"
+                                        >
+                                            Lanjut Bayar
+                                        </ActionForm>
                                     )}
                                     {canReschedule && (
                                         <Link className="profile-booking-secondary" to={`/book?${rescheduleParams.toString()}`}>
@@ -214,29 +243,21 @@ export default function UserProfile() {
                                         </Link>
                                     )}
                                     {canDelete && (
-                                        <form
-                                            method="POST"
+                                        <ActionForm
                                             action={`/bookings/${booking.id}`}
-                                            onSubmit={(event) => {
-                                                if (!window.confirm('Delete this booking?')) {
-                                                    event.preventDefault();
-                                                }
-                                            }}
+                                            method="DELETE"
+                                            confirmMessage="Hapus booking ini dari riwayat?"
+                                            confirmTitle="Hapus booking"
+                                            confirmLabel="Hapus"
+                                            danger
                                         >
-                                            <input type="hidden" name="_token" value={csrfToken} />
-                                            <input type="hidden" name="_method" value="DELETE" />
-                                            <button type="submit">Delete</button>
-                                        </form>
-                                    )}
-                                    {showRebook && (
-                                        <Link className="profile-booking-secondary" to={`/book?${rebookParams.toString()}`}>
-                                            Rebook
-                                        </Link>
+                                            Delete
+                                        </ActionForm>
                                     )}
                                 </div>
                                 {canReschedule && (
                                     <small className="profile-reschedule-note">
-                                        Reschedule maksimal H-3 dari jadwal awal yang ditentukan.
+                                        Reschedule hanya tersedia sebelum memasuki H-3 dari jadwal booking.
                                     </small>
                                 )}
                             </article>
