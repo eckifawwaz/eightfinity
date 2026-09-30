@@ -69,6 +69,7 @@ class UserProfileController extends Controller
                 'phone' => $user->phone,
                 'alternate_phone' => $user->alternate_phone,
                 'address' => $user->address ?: ($bookings->first()['customer_address'] ?? null),
+                'two_factor_enabled' => $user->two_factor_enabled,
             ],
             'summary' => [
                 'total_sessions' => $bookings->count(),

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\AdminTwoFactorController;
+use App\Http\Controllers\Auth\UserTwoFactorController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationCodeController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -32,10 +33,17 @@ Route::get('/', function (Request $request) {
         return redirect(Auth::guard('admin')->check() ? '/dashboard' : '/admin/login');
     }
 
-    return redirect()->route('register');
+    return redirect()->route('user.home');
 });
 
 Route::middleware('portal:user')->group(function () {
+    // Public dashboard: guests can browse, but booking/profile routes below still require sign in.
+    Route::get('/home', function (Request $request) {
+        return view('react', [
+            'auth' => ['authenticated' => Auth::guard('web')->check()],
+        ]);
+    })->name('user.home');
+
     Route::middleware('guest:web')->group(function () {
         Route::view('/login', 'react')->name('user.login');
         Route::view('/register', 'react')->name('register');
@@ -83,11 +91,17 @@ Route::middleware('portal:user')->group(function () {
             ->middleware('throttle:6,1')
             ->name('verification.code.resend');
 
-        Route::middleware('email.code.verified')->group(function () {
-            Route::view('/home', 'react')->name('user.home');
+        Route::get('/two-factor', [UserTwoFactorController::class, 'show'])->name('user.two-factor.show');
+        Route::post('/two-factor', [UserTwoFactorController::class, 'verify'])->name('user.two-factor.verify');
+        Route::post('/two-factor/resend', [UserTwoFactorController::class, 'resend'])
+            ->middleware('throttle:6,1')
+            ->name('user.two-factor.resend');
+
+        Route::middleware(['email.code.verified', 'user.two_factor'])->group(function () {
             Route::get('/profile/data', [UserProfileController::class, 'data'])->name('user.profile.data');
             Route::get('/profile', UserProfileController::class)->name('user.profile');
             Route::match(['put', 'patch'], '/profile', [ProfileController::class, 'update'])->name('user.profile.update');
+            Route::patch('/profile/security', [ProfileController::class, 'updateSecurity'])->name('user.profile.security');
             Route::delete('/profile', [ProfileController::class, 'destroy'])->name('user.profile.destroy');
             Route::get('/book', [UserBookingController::class, 'create'])->name('user.book');
             Route::get('/book/availability', [UserBookingController::class, 'availability'])->name('user.book.availability');

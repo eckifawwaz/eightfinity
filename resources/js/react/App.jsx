@@ -29,6 +29,7 @@ import UserForgotPassword from './pages/user/UserForgotPassword';
 import UserResetPassword from './pages/user/UserResetPassword';
 import UserSignIn from './pages/user/UserSignIn';
 import UserSignUp from './pages/user/UserSignUp';
+import UserTwoFactor from './pages/user/UserTwoFactor';
 import UserVerifyEmail from './pages/user/UserVerifyEmail';
 import './styles.css';
 
@@ -57,12 +58,13 @@ function App() {
         <BrowserRouter>
             <SubmitOnceGuard />
             <Routes>
-                <Route path="/" element={<Navigate to="/register" replace />} />
+                <Route path="/" element={<Navigate to="/home" replace />} />
                 <Route path="/login" element={<UserSignIn />} />
                 <Route path="/register" element={<UserSignUp />} />
                 <Route path="/forgot-password" element={<UserForgotPassword />} />
                 <Route path="/reset-password/:token" element={<UserResetPassword />} />
                 <Route path="/verify-email" element={<UserVerifyEmail />} />
+                <Route path="/two-factor" element={<UserTwoFactor />} />
                 <Route path="/home" element={<UserHome />} />
                 <Route path="/book" element={<UserBook />} />
                 <Route path="/packages/:slug" element={<UserPackageDetail />} />

@@ -36,6 +36,29 @@ class ProfileController extends Controller
     }
 
     /**
+     * Toggle the user's two-factor authentication preference.
+     */
+    public function updateSecurity(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'two_factor_enabled' => ['required', 'boolean'],
+        ]);
+
+        $user = $request->user();
+        $enabled = (bool) $validated['two_factor_enabled'];
+
+        $user->forceFill([
+            'two_factor_enabled' => $enabled,
+            'two_factor_code_hash' => $enabled ? $user->two_factor_code_hash : null,
+            'two_factor_expires_at' => $enabled ? $user->two_factor_expires_at : null,
+        ])->save();
+
+        $request->session()->put('user_two_factor_verified', true);
+
+        return back()->with('status', $enabled ? 'user-two-factor-enabled' : 'user-two-factor-disabled');
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse

@@ -40,6 +40,7 @@ const packages = [
 ];
 
 export default function UserHome() {
+    const auth = window.__AUTH__ ?? { authenticated: false };
     const [showGuide, setShowGuide] = useState(true);
 
     function closeGuide() {
@@ -76,7 +77,11 @@ export default function UserHome() {
                     <strong>Eight<span>Finity</span></strong>
                 </Link>
                 <nav>
-                    <Link to="/profile" className="customer-start">Profile</Link>
+                    {auth.authenticated ? (
+                        <Link to="/profile" className="customer-start">Profile</Link>
+                    ) : (
+                        <Link to="/login" className="customer-start">Sign In</Link>
+                    )}
                 </nav>
             </header>
 
@@ -90,7 +95,9 @@ export default function UserHome() {
                     <h1>Capture Your <span>Perfect</span><br />Moments</h1>
                     <p>Professional photo booth experience with instant digital delivery. Book your session in seconds!</p>
                     <div className="customer-hero-actions">
-                        <Link to="/book">Get Started <b>→</b></Link>
+                        {/* Full navigation (not client-side Link) so guests hit the auth:web
+                            middleware on /book and get redirected to sign in first. */}
+                        <a href="/book">Get Started <b>→</b></a>
                     </div>
                 </div>
                 <img src="/image/user-dashboard/hero-photobooth.png" alt="Friends enjoying an EightFinity photo booth" />

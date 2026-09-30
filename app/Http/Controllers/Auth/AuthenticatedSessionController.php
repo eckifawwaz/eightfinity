@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AdminTwoFactorCodeMail;
+use App\Mail\UserTwoFactorCodeMail;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Providers\RouteServiceProvider;
 use App\Support\PortalUrl;
@@ -66,6 +67,21 @@ class AuthenticatedSessionController extends Controller
 
         if ($guard === 'web' && ! $user?->email_verified_at) {
             return redirect(PortalUrl::to('user', '/verify-email'));
+        }
+
+        if ($guard === 'web') {
+            if ($user->two_factor_enabled) {
+                $code = $user->generateTwoFactorCode();
+                Mail::to($user)->send(new UserTwoFactorCodeMail($user, $code));
+
+                $request->session()->put('user_two_factor_verified', false);
+
+                return redirect(PortalUrl::to('user', '/two-factor'))
+                    ->with('status', 'two-factor-code-sent');
+            }
+
+            $user->forceFill(['last_login_at' => now()])->save();
+            $request->session()->put('user_two_factor_verified', true);
         }
 
         if ($guard === 'admin') {

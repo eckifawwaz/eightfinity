@@ -328,6 +328,32 @@ export default function UserProfile() {
                 )}
             </section>
 
+            <section className="profile-info-card profile-security-card">
+                <header>
+                    <h2>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm0-14v5m0 3h.01" />
+                        </svg>
+                        Two-Factor Authentication
+                    </h2>
+                </header>
+                <p>Secure your account with a verification code sent to your email every time you sign in.</p>
+                <form method="POST" action="/profile/security" className="profile-security-form">
+                    <input type="hidden" name="_token" value={csrfToken} />
+                    <input type="hidden" name="_method" value="PATCH" />
+                    <button
+                        aria-label="Toggle two-factor authentication"
+                        className={`admin-switch ${user.two_factor_enabled ? 'active' : ''}`}
+                        disabled={!profile}
+                        name="two_factor_enabled"
+                        type="submit"
+                        value={user.two_factor_enabled ? '0' : '1'}
+                    >
+                        <span />
+                    </button>
+                </form>
+            </section>
+
             <div className="profile-signout">
                 <button type="button" onClick={() => setShowLogoutConfirm(true)}>⇥ Sign Out</button>
             </div>

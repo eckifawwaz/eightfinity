@@ -67,6 +67,16 @@
             window.__ADMIN_TWO_FACTOR__ = @json($adminTwoFactor);
         </script>
     @endisset
+    @isset($userTwoFactor)
+        <script>
+            window.__USER_TWO_FACTOR__ = @json($userTwoFactor);
+        </script>
+    @endisset
+    @isset($auth)
+        <script>
+            window.__AUTH__ = @json($auth);
+        </script>
+    @endisset
     @isset($verificationEmail)
         <script>
             window.__VERIFY_EMAIL__ = @json($verificationEmail);
