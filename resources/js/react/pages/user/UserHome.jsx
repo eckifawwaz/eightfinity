@@ -41,7 +41,7 @@ const packages = [
 
 export default function UserHome() {
     const auth = window.__AUTH__ ?? { authenticated: false };
-    const [showGuide, setShowGuide] = useState(true);
+    const [showGuide, setShowGuide] = useState(() => !auth.show_two_factor_reminder);
 
     function closeGuide() {
         setShowGuide(false);

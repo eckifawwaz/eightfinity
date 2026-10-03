@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Support\BookingLifecycle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -10,7 +11,7 @@ class AdminDashboardController extends Controller
 {
     public function __invoke(): View
     {
-        $today = today();
+        $today = now(BookingLifecycle::timezone());
 
         $bookingsThisMonth = Booking::whereYear('booking_date', $today->year)
             ->whereMonth('booking_date', $today->month)

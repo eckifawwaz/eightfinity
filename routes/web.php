@@ -44,6 +44,9 @@ Route::middleware('portal:user')->group(function () {
         ]);
     })->name('user.home');
 
+    // Package information is public. Booking itself remains protected below.
+    Route::view('/packages/{slug}', 'react')->name('user.package-detail');
+
     Route::middleware('guest:web')->group(function () {
         Route::view('/login', 'react')->name('user.login');
         Route::view('/register', 'react')->name('register');
@@ -105,7 +108,6 @@ Route::middleware('portal:user')->group(function () {
             Route::delete('/profile', [ProfileController::class, 'destroy'])->name('user.profile.destroy');
             Route::get('/book', [UserBookingController::class, 'create'])->name('user.book');
             Route::get('/book/availability', [UserBookingController::class, 'availability'])->name('user.book.availability');
-            Route::view('/packages/{slug}', 'react')->name('user.package-detail');
             Route::view('/payment', 'react')->name('user.payment');
             Route::post('/payment', [BookingPaymentController::class, 'store'])->name('user.payment.store');
             Route::get('/payment/return', [BookingPaymentController::class, 'paymentReturn'])->name('user.payment.return');

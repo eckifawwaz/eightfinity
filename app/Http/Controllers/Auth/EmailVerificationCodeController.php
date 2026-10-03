@@ -54,7 +54,13 @@ class EmailVerificationCodeController extends Controller
             'email_verification_expires_at' => null,
         ])->save();
 
-        return redirect(PortalUrl::to('user', RouteServiceProvider::HOME));
+        $redirect = redirect(PortalUrl::to('user', RouteServiceProvider::HOME));
+
+        if (! $user->two_factor_enabled) {
+            $redirect->with('show_two_factor_reminder', true);
+        }
+
+        return $redirect;
     }
 
     public function resend(Request $request): RedirectResponse

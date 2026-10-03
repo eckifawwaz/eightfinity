@@ -328,30 +328,53 @@ export default function UserProfile() {
                 )}
             </section>
 
-            <section className="profile-info-card profile-security-card">
-                <header>
-                    <h2>
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm0-14v5m0 3h.01" />
+            <section className={`profile-info-card profile-security-card ${user.two_factor_enabled ? 'is-enabled' : 'is-disabled'}`}>
+                <div className="profile-security-copy">
+                    <div className="profile-security-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 3 5.5 5.6v5.7c0 4.2 2.7 7.4 6.5 9.7 3.8-2.3 6.5-5.5 6.5-9.7V5.6L12 3Z" />
+                            <path d="M9.5 11.4 11.2 13l3.5-3.7" />
                         </svg>
-                        Two-Factor Authentication
-                    </h2>
-                </header>
-                <p>Secure your account with a verification code sent to your email every time you sign in.</p>
-                <form method="POST" action="/profile/security" className="profile-security-form">
-                    <input type="hidden" name="_token" value={csrfToken} />
-                    <input type="hidden" name="_method" value="PATCH" />
-                    <button
-                        aria-label="Toggle two-factor authentication"
-                        className={`admin-switch ${user.two_factor_enabled ? 'active' : ''}`}
-                        disabled={!profile}
-                        name="two_factor_enabled"
-                        type="submit"
-                        value={user.two_factor_enabled ? '0' : '1'}
-                    >
-                        <span />
-                    </button>
-                </form>
+                    </div>
+                    <div>
+                        <div className="profile-security-heading">
+                            <h2>Two-Factor Authentication</h2>
+                            <span className="profile-security-status">
+                                {user.two_factor_enabled ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                        <p>
+                            Add email OTP verification every time you sign in to help keep your account secure.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="profile-security-control">
+                    <div>
+                        <strong>{user.two_factor_enabled ? 'Extra protection is active' : 'Extra protection is currently off'}</strong>
+                        <small>
+                            {user.two_factor_enabled
+                                ? 'After your password is accepted, you will be asked for a 6-digit OTP sent to your email.'
+                                : 'Enable 2FA so future sign-ins require an OTP in addition to your email and password.'}
+                        </small>
+                    </div>
+                    <form method="POST" action="/profile/security" className="profile-security-form">
+                        <input type="hidden" name="_token" value={csrfToken} />
+                        <input type="hidden" name="_method" value="PATCH" />
+                        <button
+                            aria-label={user.two_factor_enabled ? 'Disable two-factor authentication' : 'Enable two-factor authentication'}
+                            aria-pressed={Boolean(user.two_factor_enabled)}
+                            className={`profile-security-switch ${user.two_factor_enabled ? 'active' : ''}`}
+                            disabled={!profile}
+                            name="two_factor_enabled"
+                            type="submit"
+                            value={user.two_factor_enabled ? '0' : '1'}
+                        >
+                            <span className="profile-security-switch-track"><i /></span>
+                            <span className="profile-security-switch-label">{user.two_factor_enabled ? 'On' : 'Off'}</span>
+                        </button>
+                    </form>
+                </div>
             </section>
 
             <div className="profile-signout">

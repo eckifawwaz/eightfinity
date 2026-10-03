@@ -67,6 +67,7 @@ class RegisteredUserController extends Controller
             'address' => $request->address,
             'password' => Hash::make($request->password),
             'role' => 'user',
+            'two_factor_enabled' => false,
         ]);
 
         event(new Registered($user));

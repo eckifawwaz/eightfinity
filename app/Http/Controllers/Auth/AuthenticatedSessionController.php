@@ -82,6 +82,7 @@ class AuthenticatedSessionController extends Controller
 
             $user->forceFill(['last_login_at' => now()])->save();
             $request->session()->put('user_two_factor_verified', true);
+            $request->session()->flash('show_two_factor_reminder', true);
         }
 
         if ($guard === 'admin') {

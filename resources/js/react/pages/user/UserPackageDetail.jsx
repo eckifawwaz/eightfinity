@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import SocialLinks from '../../components/SocialLinks';
 
 const unlimitedFeatures = [
@@ -85,7 +85,7 @@ const packageData = {
 
 export default function UserPackageDetail() {
     const { slug } = useParams();
-    const navigate = useNavigate();
+    const auth = window.__AUTH__ ?? { authenticated: false };
     const detail = packageData[slug];
     const [selectedOption, setSelectedOption] = useState(0);
 
@@ -95,7 +95,9 @@ export default function UserPackageDetail() {
 
     function choosePackage(optionIndex) {
         setSelectedOption(optionIndex);
-        navigate(`/book?package=${slug}&option=${optionIndex}`);
+        // Use a full request so Laravel auth middleware can preserve the intended
+        // booking URL for guests and return them here after sign in.
+        window.location.assign(`/book?package=${slug}&option=${optionIndex}`);
     }
 
     return (
@@ -106,7 +108,11 @@ export default function UserPackageDetail() {
                     <strong>Eight<span>Finity</span></strong>
                 </Link>
                 <nav>
-                    <Link to="/profile" className="package-start">Profile</Link>
+                    {auth.authenticated ? (
+                        <Link to="/profile" className="package-start">Profile</Link>
+                    ) : (
+                        <Link to="/login" className="package-start">Sign In</Link>
+                    )}
                 </nav>
             </header>
 

@@ -19,6 +19,7 @@ import AdminQueue from './pages/admin/AdminQueue';
 import AdminRevenue from './pages/admin/AdminRevenue';
 import AdminTwoFactor from './pages/admin/AdminTwoFactor';
 import SubmitOnceGuard from './components/SubmitOnceGuard';
+import TwoFactorReminder from './components/TwoFactorReminder';
 import UserBook from './pages/user/UserBook';
 import UserHome from './pages/user/UserHome';
 import UserPackageDetail from './pages/user/UserPackageDetail';
@@ -57,6 +58,7 @@ function App() {
     return (
         <BrowserRouter>
             <SubmitOnceGuard />
+            <TwoFactorReminder />
             <Routes>
                 <Route path="/" element={<Navigate to="/home" replace />} />
                 <Route path="/login" element={<UserSignIn />} />

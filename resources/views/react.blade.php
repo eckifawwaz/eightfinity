@@ -72,11 +72,17 @@
             window.__USER_TWO_FACTOR__ = @json($userTwoFactor);
         </script>
     @endisset
-    @isset($auth)
-        <script>
-            window.__AUTH__ = @json($auth);
-        </script>
-    @endisset
+    @php
+        $webUser = auth('web')->user();
+        $authPayload = array_merge([
+            'authenticated' => (bool) $webUser,
+            'two_factor_enabled' => (bool) ($webUser?->two_factor_enabled ?? false),
+            'show_two_factor_reminder' => (bool) session('show_two_factor_reminder', false),
+        ], isset($auth) && is_array($auth) ? $auth : []);
+    @endphp
+    <script>
+        window.__AUTH__ = @json($authPayload);
+    </script>
     @isset($verificationEmail)
         <script>
             window.__VERIFY_EMAIL__ = @json($verificationEmail);
